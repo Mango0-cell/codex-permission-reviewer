@@ -1,0 +1,41 @@
+{
+  "name": "codex-permission-reviewer",
+  "version": "0.3.0",
+  "description": "Configurable model review for sensitive Codex actions with privacy-preserving approval learning.",
+  "type": "module",
+  "bin": {
+    "codex-permission-reviewer": "./bin/cli.mjs"
+  },
+  "files": [
+    ".codex-plugin/",
+    ".mcp.json",
+    "bin/",
+    "scripts/",
+    "skills/",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "codex",
+    "model-review",
+    "mcp",
+    "permissions",
+    "security"
+  ],
+  "author": "Adrián Gaitán <hello@adriangaitan.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adriancho91s/codex-permission-reviewer.git"
+  },
+  "homepage": "https://github.com/adriancho91s/codex-permission-reviewer#readme",
+  "bugs": {
+    "url": "https://github.com/adriancho91s/codex-permission-reviewer/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
