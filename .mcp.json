@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "codex-permission-reviewer": {
+      "command": "node",
+      "args": [
+        "./scripts/server.mjs"
+      ],
+      "cwd": ".",
+      "env": {
+        "NODE_NO_WARNINGS": "1"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "codex-permission-reviewer",
+  "version": "0.3.0",
+  "description": "Configurable model review for sensitive Codex actions without taxing the general code-review budget.",
+  "author": {
+    "name": "Adrián Gaitán"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Permission Reviewer",
+    "shortDescription": "Review sensitive actions with a configurable model.",
+    "longDescription": "A local, fail-closed advisor for genuinely sensitive actions while routine commits, pushes, PRs, CI, and reads remain autonomous. The reviewer model and effort are configurable, with Luna Max as the default. Exact explicit approvals can be learned as expiring hashes; raw commands, targets, data, and secrets are never stored. The isolated no-tools child never executes the proposed action and cannot replace host approvals.",
+    "developerName": "Adrián Gaitán",
+    "category": "Security",
+    "capabilities": [
+      "Security",
+      "Analysis",
+      "MCP"
+    ],
+    "brandColor": "#6D5EF5",
+    "defaultPrompt": [
+      "Review this sensitive command before I run it.",
+      "Check this production or external-system action.",
+      "Assess this permission or credential change."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
