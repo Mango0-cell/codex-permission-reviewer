@@ -1182,7 +1182,7 @@ function deterministicRiskForNonRead(action) {
   return [...new Set(hazards)];
 }
 
-const NON_OVERRIDABLE_COMMAND_SIGNAL = /(?:\bgit\s+(?:push\b[^\n]*(?:--force(?!-with-lease)|-f\b)|reset\s+--hard|clean\s+-[^\n]*f|checkout\s+--|restore\s+)|\brm\s+-[^\n]*r[^\n]*f|\b(?:curl|wget)\b[^\n|;&]*(?:\||&&|;)\s*(?:sh|bash|zsh|node|python|python3)\b|\b(?:drop|truncate)\s+(?:table|database|schema)\b|\b(?:delete\s+from\s+\S+|update\s+\S+\s+set\b)(?![\s\S]*\bwhere\b)|\b(?:authorization|permission|credential|secret)\s+bypass\b)/iu;
+const NON_OVERRIDABLE_COMMAND_SIGNAL = /(?:\bgit\s+(?:push\b[^\n]*(?:--force(?!-with-lease)|-f\b)|reset\s+--hard|clean\s+-[^\n]*f|checkout\s+--|restore\s+)|(?<!-)\brm\s+-[^\n]*r[^\n]*f|\b(?:curl|wget)\b[^\n|;&]*(?:\||&&|;)\s*(?:sh|bash|zsh|node|python|python3)\b|\b(?:drop|truncate)\s+(?:table|database|schema)\b|\b(?:delete\s+from\s+\S+|update\s+\S+\s+set\b)(?![\s\S]*\bwhere\b)|\b(?:authorization|permission|credential|secret)\s+bypass\b)/iu;
 
 const NEVER_LEARN_OPERATION_KINDS = new Set([
   "file_delete",
