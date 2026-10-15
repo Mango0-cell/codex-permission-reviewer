@@ -117,10 +117,11 @@ host review mechanism for this plugin's own advisory request.
 
 Every genuinely sensitive request declares `userAuthorization` as `none` or `explicit`. The caller
 may use `explicit` only when the user authorized that exact action in the active
-conversation. A fresh explicit configured-model review can allow a targeted production
-database change, deployment, credential/permission operation, or other exact
-sensitive action after informed confirmation. It cannot release plain force
-pushes or unleased history rewrites, broad destructive SQL, destructive filesystem commands,
+conversation. A fresh explicit configured-model review can allow a targeted
+single-file deletion, production database change, deployment,
+credential/permission operation, or other exact sensitive action after informed
+confirmation. It cannot release plain force pushes or unleased history rewrites,
+broad destructive SQL, broad or recursive destructive filesystem commands,
 authorization bypass, download-and-execute pipelines, broad targets, or
 ambiguous metadata. The field is part of the result digest, and explicit
 reviews are never served from the ordinary result cache.
