@@ -41,7 +41,7 @@ try {
     await mkdir(fakeBin);
     await writeFile(fakeCodex, [
       '#!/usr/bin/env node',
-      'const fs = require("node:fs");',
+      'import fs from "node:fs";',
       'fs.writeFileSync(process.env.REVIEWER_CODEX_ARGUMENTS, JSON.stringify(process.argv.slice(2)));',
       '',
     ].join('\n'), { mode: 0o755 });

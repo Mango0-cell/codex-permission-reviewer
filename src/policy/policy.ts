@@ -1,7 +1,7 @@
 import type { Stats } from "node:fs";
 import type { FileHandle } from "node:fs/promises";
 import type { NormalizedAction, Review, FileVerification } from "../action/types.js";
-import { hasNonOverridableCommandSignal } from "./command-signals.js";
+import { hasNonOverridableCommandSignal, hasUnlearnableCommandMutation } from "./command-signals.js";
 import { O_NOFOLLOW, O_RDONLY } from "node:constants";
 import { lstat, open, realpath } from "node:fs/promises";
 import { basename, delimiter, extname, isAbsolute, relative, resolve, sep } from "node:path";
@@ -383,6 +383,9 @@ export function explicitAuthorizationBlockers(action: NormalizedAction) {
 
 export function learnedApprovalBlockers(action: NormalizedAction) {
   const blockers = explicitAuthorizationBlockers({ ...action, userAuthorization: "explicit" });
+  if (action.command && hasUnlearnableCommandMutation(action.command)) {
+    blockers.push("known file or row mutations require fresh review and are never learned");
+  }
   if (action.reversibility !== "reversible") blockers.push("non-reversible approvals are never learned");
   if (action.sensitiveData.involved) blockers.push("sensitive-data approvals are never learned");
   if (NEVER_LEARN_OPERATION_KINDS.has(action.operationKind)) blockers.push("this sensitive operation category requires fresh confirmation");
@@ -441,4 +444,3 @@ export async function applyDeterministicPolicy(review: Review, action: Normalize
     saferAlternative: safeReview.saferAlternative || "Confirm the real path and declared workspace root before reading.",
   };
 }
-

@@ -46,6 +46,8 @@ Authorization for a different action or a retry does not count.
 Human confirmation does not override an actual model denial or catastrophic,
 broad, history-destructive, ambiguous or other non-overridable boundary. A fresh
 explicit review is required after confirmation; it bypasses the result cache.
+A targeted single-file deletion may use this path when its target and impact are
+clear; broad or recursive destructive filesystem commands remain non-overridable.
 Do not repeatedly resubmit the same denied action to obtain a different answer.
 
 ## Memory and scope

@@ -57,13 +57,96 @@ function destructiveGit(args: string[]) {
   return command === "restore" && args.length > i;
 }
 
+function sqlWithoutCommentsAndLiterals(text: string): string {
+  return text.replace(/--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"/gu, " ");
+}
+
 function broadSql(text: string) {
   // Ignore WHERE inside literals and comments, and keep its scope local to
   // the SQL statement. This is conservative signal matching, not SQL parsing.
-  const sql = text.replace(/--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"/gu, " ");
+  const sql = sqlWithoutCommentsAndLiterals(text);
   return sql.split(/;/u).some((statement) =>
     /\b(?:drop|truncate)\s+(?:table|database|schema)\b/iu.test(statement) ||
     (/\b(?:delete\s+from\s+\S+|update\s+\S+\s+set\b)/iu.test(statement) && !/\bwhere\b/iu.test(statement)));
+}
+
+function hasRowMutationSql(text: string): boolean {
+  const sql = sqlWithoutCommentsAndLiterals(text);
+  return sql.split(/;/u).some((statement) =>
+    /\bdelete\s+from\b/iu.test(statement) ||
+    /\bupdate\b[\s\S]*?\bset\b/iu.test(statement) ||
+    /\b(?:insert|replace|merge)\s+into\b/iu.test(statement));
+}
+
+function startsSqlReadQuery(text: string): boolean {
+  const withoutLeadingComments = text.replace(/^(?:\s*(?:--[^\n]*|\/\*[\s\S]*?\*\/))*/u, "");
+  return /^\s*(?:select|with)\b/iu.test(withoutLeadingComments);
+}
+
+const FIND_VALUE_OPTIONS = new Set<string>([
+  "-name", "-iname", "-path", "-ipath", "-lname", "-ilname", "-regex", "-iregex",
+  "-type", "-xtype", "-perm", "-user", "-group", "-size", "-links", "-inum",
+  "-samefile", "-newer", "-newermt", "-uid", "-gid", "-fstype", "-context",
+  "-maxdepth", "-mindepth",
+]);
+
+function findDeletes(args: string[]): boolean {
+  for (let i = 0; i < args.length; i += 1) {
+    if (FIND_VALUE_OPTIONS.has(args[i]!)) {
+      i += 1;
+      continue;
+    }
+    if (args[i] === "-delete") return true;
+  }
+  return false;
+}
+
+function hasFileDeletionTarget(args: string[]): boolean {
+  let parsingOptions = true;
+  for (const arg of args) {
+    if (parsingOptions && arg === "--") {
+      parsingOptions = false;
+      continue;
+    }
+    if (parsingOptions && arg.startsWith("-") && arg !== "-") {
+      if (arg === "--help" || arg === "--version") return false;
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+const COMMAND_BOUNDARY = new Set<string>([";", "|", "&", "\n"]);
+
+/**
+ * Detect common file and row-mutation commands that must not receive a
+ * reusable learned approval. This is intentionally lexical and conservative;
+ * absence of a match never authorizes an action.
+ */
+export function hasUnlearnableCommandMutation(command: unknown, depth = 0): boolean {
+  if (typeof command !== "string") return false;
+  if (command.length > 12_000) return true;
+  if (hasRowMutationSql(command)) return true;
+  if (startsSqlReadQuery(command)) return false;
+
+  const tokens = words(command);
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i]!;
+    if (SEPARATOR.test(token)) continue;
+    const name = token.slice(token.lastIndexOf("/") + 1);
+    let end = i + 1;
+    while (end < tokens.length && !COMMAND_BOUNDARY.has(tokens[end]!)) end += 1;
+    const args = tokens.slice(i + 1, end);
+
+    if (["rm", "unlink", "rmdir"].includes(name) && hasFileDeletionTarget(args)) return true;
+    if (name === "find" && findDeletes(args)) return true;
+    if (/[\s;|&]/u.test(token)) {
+      // Reuse the bounded tokenizer for shell strings and nested command text.
+      if (depth >= 4 || hasUnlearnableCommandMutation(token, depth + 1)) return true;
+    }
+  }
+  return false;
 }
 
 export function hasNonOverridableCommandSignal(command: unknown, depth = 0): boolean {
