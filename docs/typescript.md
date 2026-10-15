@@ -29,6 +29,7 @@ npm ci
 npm run check
 npm test
 npm run test:package
+npm pack --dry-run
 git diff --check
 ```
 
@@ -37,8 +38,11 @@ tools. check performs strict type checking; test clean-builds and runs compiled
 Node tests. test:package packs the already-tested output with scripts disabled,
 installs that archive into a temporary consumer with development dependencies and
 install scripts disabled, then exercises CLI help, MCP initialization/tool listing,
-invalid-action handling, compatibility imports and declaration presence. It never
-registers a real plugin, reads credentials or runs a live reviewer.
+invalid-action handling, compatibility imports and declaration presence. The install
+path uses a temporary CODEX_HOME and a fake `codex` executable to verify skill asset
+resolution, file permissions, and the generated MCP registration arguments without
+changing real configuration. It never registers a real plugin, reads credentials or
+runs a live reviewer.
 
 CI installs development tools using npm ci --ignore-scripts, then type-checks,
 builds/tests, and validates the exact compiled archive on Node 20, 22 and 24.

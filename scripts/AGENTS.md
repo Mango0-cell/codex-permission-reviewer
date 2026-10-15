@@ -1,8 +1,8 @@
-# Compatibility launchers and local checks
+# Compatibility surfaces and package tooling
 
-Keep server.mjs and app-server-client.mjs as stable compatibility surfaces. Domain logic belongs in src/. Importing launchers must not start transport or spawn a reviewer. check.mjs performs syntax validation only. Preserve executable server behavior and all legacy named exports.
+Own the typed server and app-server-client compatibility facades, package asset generation, and archive verification. Keep domain logic in src/. Importing facades must not start transport or spawn a reviewer. The build generates server.mjs and app-server-client.mjs launchers; package-assets.ts owns those outputs. Preserve executable server behavior and all legacy named exports.
 
-Validation: compatibility, package, and MCP integration tests.
+Validation: npm run check, npm test, npm run test:package, and git diff --check.
 
 Maintain implementation and tests as strict TypeScript. Use type-only imports for
 contracts, validate untrusted values from unknown, and keep built JavaScript in

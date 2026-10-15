@@ -170,9 +170,16 @@ launchers and compatibility imports. Each maintained directory has an
 `AGENTS.md` specification. See [the architecture and review notes](docs/architecture.md)
 for dependency boundaries, decision flow, and classifier limitations.
 
-Run `npm ci`, `npm run check`, `npm test`, and `npm run test:package` before
-submitting changes. Tests use fixture strings, temporary files, and trusted fake reviewer
-adapters; they do not execute proposed commands or require managed auth.
+Run `npm ci`, `npm run check`, `npm test`, `npm run test:package`, and
+`npm pack --dry-run` before submitting changes. Tests use fixture strings,
+temporary files, and trusted fake reviewer adapters; they do not execute
+proposed commands or require managed auth.
+
+Coding agents and human contributors should start with
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [maintenance map](docs/maintenance.md).
+Repository skills provide focused architecture, policy, runtime, commit, and PR
+expertise for both Codex and Claude Code; shared guides keep their engineering
+rules aligned.
 
 See [the TypeScript build and install contract](docs/typescript.md). Maintainers
 compile source once during build/pack; installed users run prebuilt JavaScript

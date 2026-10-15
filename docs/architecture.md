@@ -105,10 +105,11 @@ runtime contracts, not every failure path of a real Codex app-server process.
 
 ## Validation
 
-Run npm ci, npm run check, npm test, npm run test:package, and git diff --check. CI runs
-syntax, tests, and a package dry-run on Node 20, 22, and 24. Fixture commands remain
-strings; tests only launch the local MCP server with invalid metadata or use
-trusted fake model adapters and temporary filesystem/approval state.
+Run npm ci, npm run check, npm test, npm run test:package, npm pack --dry-run,
+and git diff --check. CI runs type checks, tests, and package validation on Node
+20, 22, and 24. Fixture commands remain strings; tests only launch the local MCP
+server with invalid metadata or use trusted fake model adapters and temporary
+filesystem/approval state.
 
 ## Availability, answer completeness and human confirmation
 
