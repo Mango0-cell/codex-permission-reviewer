@@ -1,4 +1,4 @@
-import { hasNonOverridableCommandSignal } from "./command-signals.mjs";
+import { hasNonOverridableCommandSignal, hasUnlearnableCommandMutation } from "./command-signals.mjs";
 import { O_NOFOLLOW, O_RDONLY } from "node:constants";
 import { lstat, open, realpath } from "node:fs/promises";
 import { basename, delimiter, extname, isAbsolute, relative, resolve, sep } from "node:path";
@@ -376,6 +376,9 @@ export function explicitAuthorizationBlockers(action) {
 
 export function learnedApprovalBlockers(action) {
   const blockers = explicitAuthorizationBlockers({ ...action, userAuthorization: "explicit" });
+  if (action.command && hasUnlearnableCommandMutation(action.command)) {
+    blockers.push("known file or row mutations require fresh review and are never learned");
+  }
   if (action.reversibility !== "reversible") blockers.push("non-reversible approvals are never learned");
   if (action.sensitiveData.involved) blockers.push("sensitive-data approvals are never learned");
   if (NEVER_LEARN_OPERATION_KINDS.has(action.operationKind)) blockers.push("this sensitive operation category requires fresh confirmation");

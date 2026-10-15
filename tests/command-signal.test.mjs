@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { hasNonOverridableCommandSignal as signal } from '../src/policy/command-signals.mjs';
+import { hasNonOverridableCommandSignal as signal, hasUnlearnableCommandMutation as mutation } from '../src/policy/command-signals.mjs';
 
 for (const command of [
   'docker run --rm --read-only --tmpfs /scratch:rw alpine id',
@@ -40,3 +40,20 @@ for (const command of [
   'DELETE FROM leads /* WHERE id=2 */',
   `psql -c 'DELETE FROM leads'`, 'authorization bypass',
 ]) test(`retains destructive signal: ${command}`, () => assert.equal(signal(command), true));
+
+for (const command of [
+  'rm -f /tmp/report.txt', '/bin/rm -- /tmp/report.txt', 'unlink /tmp/report.txt',
+  '/usr/bin/rmdir /tmp/empty', 'find /tmp -type f -name report.txt -delete',
+  'find /tmp -name report.txt -o -delete',
+  'DELETE FROM leads WHERE id = 2', 'UPDATE leads SET status = 1 WHERE id = 2',
+  'DELETE FROM "tasks" WHERE id = 2', 'UPDATE "tasks" SET status = 1 WHERE id = 2',
+  "psql -c 'DELETE FROM leads WHERE id = 2'", 'INSERT INTO leads(id) VALUES (1)',
+  `psql -c 'UPDATE "tasks" SET status = 1 WHERE id = 2'`,
+  "find . -exec rm {} \\;",
+]) test(`prevents learned reuse for file or row mutation: ${command}`, () => assert.equal(mutation(command), true));
+
+for (const command of [
+  'docker run --rm --read-only alpine id', 'my-rm -f /tmp/report.txt',
+  'rm --help', 'rm --version', 'find /tmp -name -delete',
+  'find /tmp -type f -print', "SELECT 'DELETE FROM leads'", 'SELECT 1 -- DELETE FROM leads',
+]) test(`keeps non-mutating lexical lookalike eligible: ${command}`, () => assert.equal(mutation(command), false));
