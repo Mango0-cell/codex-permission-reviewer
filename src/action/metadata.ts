@@ -79,25 +79,25 @@ function isSecretPlaceholder(value: string) {
 function redactAssignmentValues(text: string) {
   return text.replace(
     /((?:^|[\s;&|])(?:export\s+)?(?:(?:[A-Za-z_][A-Za-z0-9_]*?(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH))|(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH))\s*=\s*)(["'][^"']*["']|[^\s,;&|]+)/giu,
-    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
+    (_match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
   );
 }
 
 function redactLabeledSecrets(text: string) {
   return text.replace(
     /((?:api[\s_-]*key|access[\s_-]*token|refresh[\s_-]*token|client[\s_-]*secret|authorization|password|passwd|secret|private[\s_-]*key|credential|cookie|session[\s_-]*token)\s*(?:=|:)\s*)(["'][^"']*["']|[^\s,;&|]+)/giu,
-    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
+    (_match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
   );
 }
 
 function redactCurlAuth(text: string) {
   let redacted = text.replace(
     /((?:\bcurl\b[^\n]{0,500}?\s)(?:--user|-u)\s+)([^\s]+)/giu,
-    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_CURL_AUTH]"}`,
+    (_match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_CURL_AUTH]"}`,
   );
   redacted = redacted.replace(
     /([?&](?:signature|sig|token|api[\s_-]*key|access[\s_-]*token|auth(?:orization)?)=)([^&\s]+)/giu,
-    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_QUERY_SECRET]"}`,
+    (_match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_QUERY_SECRET]"}`,
   );
   return redacted;
 }
@@ -119,7 +119,7 @@ export function redactSecrets(value: unknown): string {
   redacted = redactLabeledSecrets(redacted);
   redacted = redacted.replace(
     /((?:^|\s)--(?:api-key|access-token|refresh-token|token|password|secret)(?:=|\s+))([^\s]+)/giu,
-    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED]"}`,
+    (_match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED]"}`,
   );
   redacted = redactCurlAuth(redacted);
   redacted = redacted.replace(

@@ -19,7 +19,10 @@
     "types": [
       "node"
     ],
-    "inlineSources": true
+    "inlineSources": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": [
     "src/**/*.ts",

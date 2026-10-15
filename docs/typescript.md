@@ -2,7 +2,7 @@
 
 Maintained code in src/, bin/, scripts/ and tests/ is TypeScript. The compiler uses
 strict mode, noUncheckedIndexedAccess, noImplicitOverride, noFallthroughCasesInSwitch,
-NodeNext ESM resolution and a Node 20 API baseline. Explicit DTOs describe actions,
+NodeNext ESM resolution, unused-code/return-path checks and a Node 20 API baseline. Explicit DTOs describe actions,
 normalized flags, model reviews, decorated results, adapters, scheduling and child
 protocol state. External JSON/process/store data is unknown until validated.
 Types do not replace runtime checks of untrusted input or create authorizations.
