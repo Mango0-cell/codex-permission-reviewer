@@ -405,23 +405,19 @@ export async function applyDeterministicPolicy(review, action) {
     };
   }
   const highSensitivityHazards = deterministicHighSensitivityHazards(action);
-  if (highSensitivityHazards.length > 0) {
+  if (highSensitivityHazards.length > 0 || action.operationKind !== "file_read") {
+    const blockers = explicitAuthorizationBlockers({ ...action, userAuthorization: "explicit" });
+    const confirmable = blockers.length === 0;
     return {
-      verdict: "deny",
+      verdict: confirmable ? "needs_user" : "deny",
       riskLevel: "high",
-      rationale: "A deterministic high-sensitivity signal was detected; the model cannot override the read-only policy.",
-      detectedHazards: highSensitivityHazards,
-      saferAlternative: safeReview.saferAlternative || "Remove the high-sensitivity scope or ask the user to confirm the action directly.",
-    };
-  }
-  if (action.operationKind !== "file_read") {
-    const hazards = deterministicRiskForNonRead(action);
-    return {
-      verdict: hazards.some((hazard) => /network|external|destructive|authorization|credential|high-sensitivity/iu.test(hazard)) ? "deny" : "needs_user",
-      riskLevel: "high",
-      rationale: "The model returned allow, but this plugin automatically allows verified reads only.",
-      detectedHazards: ["model allow was rejected by deterministic read-only policy", ...hazards],
-      saferAlternative: safeReview.saferAlternative || "Ask the user to confirm the exact mutation before proceeding.",
+      rationale: confirmable
+        ? "This exact action requires user authorization followed by a fresh model review."
+        : "The action has a deterministic boundary that explicit authorization cannot override.",
+      detectedHazards: [...new Set([...safeReview.detectedHazards, ...highSensitivityHazards, ...deterministicRiskForNonRead(action), ...blockers])],
+      saferAlternative: confirmable
+        ? "Ask the user to approve this exact action, then submit a fresh review with userAuthorization set to explicit."
+        : safeReview.saferAlternative || "Narrow the action and resolve its non-overridable hazards.",
     };
   }
   const verification = await verifySafeRead(action);

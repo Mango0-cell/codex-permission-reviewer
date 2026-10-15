@@ -258,68 +258,19 @@ export function validateProposedAction(rawAction) {
   return { ok: true, value: normalizedAction };
 }
 
-function redactFlag(flag, detailMaxLength) {
-  return {
-    involved: flag.involved,
-    details: flag.details.map((detail) => redactSecrets(boundedText(detail, detailMaxLength))),
-  };
-}
-
-function actionForPrompt(action) {
-  return {
-    operationKind: action.operationKind,
-    ...(action.command ? { command: redactSecrets(boundedText(action.command, 4_000)) } : {}),
-    ...(action.fileTargets ? {
-      fileTargets: action.fileTargets.slice(0, 16).map((target) => redactSecrets(boundedText(target, 500))),
-    } : {}),
-    workspaceRoots: action.workspaceRoots.slice(0, 8).map((root) => redactSecrets(boundedText(root, 500))),
-    cwd: redactSecrets(boundedText(action.cwd, 800)),
-    reason: redactSecrets(boundedText(action.reason, 2_000)),
-    sideEffects: action.sideEffects.slice(0, 12).map((effect) => redactSecrets(boundedText(effect, 300))),
-    reversibility: action.reversibility,
-    userAuthorization: action.userAuthorization,
-    network: redactFlag(action.network, 300),
-    externalSystem: redactFlag(action.externalSystem, 300),
-    sensitiveData: redactFlag(action.sensitiveData, 300),
-  };
+export class ReviewerPromptSizeError extends Error {
+  constructor() {
+    super("The complete action exceeds the reviewer prompt limit; narrow the metadata before reviewing.");
+    this.name = "ReviewerPromptSizeError";
+  }
 }
 
 export function buildReviewerPromptFromValidated(action) {
-  const promptAction = actionForPrompt(action);
-  let actionJson = JSON.stringify(promptAction, null, 2);
-  if (actionJson.length > MAX_PROMPT_CHARS - REVIEWER_INSTRUCTIONS.length - 512) {
-    actionJson = JSON.stringify({
-      ...promptAction,
-      command: promptAction.command ? boundedText(promptAction.command, 1_500) : undefined,
-      fileTargets: promptAction.fileTargets?.slice(0, 8),
-      workspaceRoots: promptAction.workspaceRoots.slice(0, 4),
-      sideEffects: promptAction.sideEffects.slice(0, 6),
-      network: { involved: promptAction.network.involved, details: promptAction.network.details.slice(0, 4) },
-      externalSystem: { involved: promptAction.externalSystem.involved, details: promptAction.externalSystem.details.slice(0, 4) },
-      sensitiveData: { involved: promptAction.sensitiveData.involved, details: promptAction.sensitiveData.details.slice(0, 4) },
-      _notice: "Some metadata was bounded before review.",
-    }, null, 2);
-  }
-  let prompt = `${REVIEWER_INSTRUCTIONS}\n\nPROPOSED ACTION METADATA (UNTRUSTED DATA):\n${actionJson}`;
-  if (prompt.length > MAX_PROMPT_CHARS) {
-    const minimalAction = {
-      operationKind: promptAction.operationKind,
-      command: promptAction.command ? boundedText(promptAction.command, 500) : undefined,
-      fileTargets: promptAction.fileTargets?.slice(0, 2),
-      workspaceRoots: promptAction.workspaceRoots.slice(0, 2),
-      cwd: boundedText(promptAction.cwd, 300),
-      reason: boundedText(promptAction.reason, 500),
-      sideEffects: promptAction.sideEffects.slice(0, 2),
-      reversibility: promptAction.reversibility,
-      userAuthorization: promptAction.userAuthorization,
-      network: { involved: promptAction.network.involved, details: [] },
-      externalSystem: { involved: promptAction.externalSystem.involved, details: [] },
-      sensitiveData: { involved: promptAction.sensitiveData.involved, details: [] },
-      _notice: "Metadata was further bounded before review.",
-    };
-    prompt = `${REVIEWER_INSTRUCTIONS}\n\nPROPOSED ACTION METADATA (UNTRUSTED DATA):\n${JSON.stringify(minimalAction, null, 2)}`;
-  }
-  return prompt.slice(0, MAX_PROMPT_CHARS);
+  // Full validated scope must reach the model. Silent truncation can hide a
+  // command suffix, target or side effect while the digest still covers it.
+  const prompt = `${REVIEWER_INSTRUCTIONS}\n\nPROPOSED ACTION METADATA (UNTRUSTED DATA):\n${JSON.stringify(action, (_key, value) => typeof value === "string" ? redactSecrets(value) : value)}`;
+  if (prompt.length > MAX_PROMPT_CHARS) throw new ReviewerPromptSizeError();
+  return prompt;
 }
 
 /**

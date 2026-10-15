@@ -53,6 +53,26 @@ export function outputFailure(_reason, hazard = "reviewer_unavailable", action =
   }, action);
 }
 
+// Availability is not a completed policy decision. Never turn an outage into
+// an approval, and do not tell callers a transport failure is a model denial.
+export function reviewerUnavailable(hazard, action, retryAfterMs = null) {
+  const retryable = Number.isFinite(retryAfterMs) && retryAfterMs >= 0;
+  return {
+    ...decorateReview({
+      verdict: "needs_user",
+      riskLevel: "high",
+      rationale: "No advisory decision is available because the reviewer could not complete. The proposed action remains unapproved.",
+      detectedHazards: [hazard],
+      saferAlternative: retryable
+        ? "Continue independent work. Retry the review after the indicated delay within a bounded retry budget; do not execute the proposed action without approval."
+        : "Resolve the reviewer setup problem or ask the user for help; do not execute the proposed action on this incomplete review.",
+    }, action),
+    reviewStatus: "unavailable",
+    retryable,
+    ...(retryable ? { retryAfterMs: Math.ceil(retryAfterMs) } : {}),
+  };
+}
+
 /**
  * Strictly parse the reviewer's JSON object. Structured Outputs is not a
  * substitute for local validation because the network response is untrusted.

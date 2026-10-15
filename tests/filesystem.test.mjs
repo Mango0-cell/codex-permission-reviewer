@@ -14,7 +14,7 @@ test('trusted read cache rechecks changed files, symlinks, binary and executable
     const path = join(root, 'note.md');
     await writeFile(path, 'Hello.');
     let calls = 0;
-    const service = createReviewService({ authAvailable: async () => true, runAppServer: async () => { calls++; return JSON.stringify(allow); } });
+    const service = createReviewService({ approvalStore: { has: async () => false }, authAvailable: async () => true, runAppServer: async () => { calls++; return JSON.stringify(allow); } });
     const request = action({ operationKind: 'file_read', command: undefined, fileTargets: [path], cwd: root, workspaceRoots: [root], userAuthorization: 'none', reason: 'Inspect text' });
     assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow');
     assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow');

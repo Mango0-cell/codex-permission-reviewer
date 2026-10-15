@@ -144,10 +144,23 @@ not an atomic execution binding and does not eliminate TOCTOU risk.
 The MCP server supports protocol versions `2026-07-28`, `2025-06-18`, and
 `2024-11-05`,
 requires `initialize` before tool access, bounds streaming input/output, and
-fails closed on missing managed auth, malformed output, unexpected or embedded
+does not approve execution on missing managed auth, malformed output, unexpected or embedded
 raw/turn tool items, model/profile mismatch, timeout, or child failure. It uses one
-in-flight review, a rolling limit of five child reviews per 60 seconds, and a
-64-entry five-minute sanitized digest cache.
+in-flight child review with up to four pending requests, a rolling limit of five
+child reviews per 60 seconds, and a 64-entry five-minute sanitized LRU digest
+cache. Queue waiting and local reuse count toward the total request deadline.
+
+Busy/timeout/process availability failures return `needs_user` with
+`reviewStatus: "unavailable"`, `retryable`, and (when retryable) `retryAfterMs`.
+They never grant approval or become cached policy denials. Agents can continue
+independent work and retry the review query once within their remaining budget;
+the proposed sensitive action still waits. Missing auth requires setup help.
+Actual policy/model denials remain distinct and effective.
+
+Exact eligible sensitive actions without user authorization return `needs_user`.
+Human confirmation triggers a fresh explicit review; cached results never replace
+it. Full validated metadata is sent within the prompt bound. An oversized scope
+requires a narrower request rather than silently truncating evidence.
 
 ## Development and architecture
 

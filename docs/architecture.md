@@ -49,9 +49,11 @@ plugin, managed credentials, release tag, or published version is changed.
 2. Reject cancellation before consulting learned approvals or result cache.
 3. Consult eligible exact learned approvals; corrupt or unavailable state never
    grants permission. Explicit requests always require a fresh model review.
-4. Reverify cached safe reads against current filesystem state. Otherwise enforce
-   concurrency/rate limits and call the managed isolated reviewer.
-5. Strictly validate the response. Preserve deny and needs_user, including after
+4. Reverify cached safe reads against current filesystem state. Otherwise queue
+   bounded work behind one active child, recheck reuse after waiting, enforce the
+   rolling model-call budget, and call the managed isolated reviewer. A request's
+   deadline covers reuse, queue wait, auth, model work and policy checks.
+5. Strictly validate the complete response. Preserve deny and needs_user, including after
    explicit user authorization. Apply deterministic restrictions to model allow.
 6. Decorate the advisory result with its digest and timestamps. Persist only
    eligible successful explicit approvals, using hashes and timestamps.
@@ -107,3 +109,40 @@ Run npm run check, npm test, npm pack --dry-run, and git diff --check. CI runs
 syntax, tests, and a package dry-run on Node 20, 22, and 24. Fixture commands remain
 strings; tests only launch the local MCP server with invalid metadata or use
 trusted fake model adapters and temporary filesystem/approval state.
+
+## Availability, answer completeness and human confirmation
+
+Review coordination uses a bounded FIFO executor in src/review/scheduler.mjs and
+trusted runtime/storage adapters in src/review/service.mjs. Four requests may
+wait behind one child. Each caller owns a deadline and AbortSignal. Cancellation
+removes queued work promptly; a running operation retains its slot through
+cleanup even after its caller stops waiting. This prevents overlapping children.
+Unrelated cached results remain usable while a model review is active.
+
+Queued unconfirmed duplicates can reuse a completed exact-scope result instead
+of spending another model call or rate token. Explicit confirmations always run
+fresh. Result cache access touches LRU order without extending original expiry;
+reads reverify the filesystem. Infrastructure failures are never cached.
+
+Availability responses keep verdict=needs_user and add host-owned
+reviewStatus=unavailable, retryable, and optional retryAfterMs. They do not approve
+execution or claim that a model rejected the action. Missing auth is not retryable
+without setup. Saturation, timeout and child failures permit a bounded retry of
+the review query. Malformed output/isolation failures still fail closed. No
+transparent retry, alternate model or weakened validation is used.
+
+For completed model allows without user authorization, exact actions that have
+no explicit-authorization blocker return needs_user with a fresh-confirmation
+path. Non-overridable hazards and actual model denials stay effective. Human
+confirmation is meaningful without becoming an unconditional policy override.
+
+Prompts now contain all validated metadata with per-value redaction and compact
+JSON, within the existing 24,000-character limit. The old builder silently
+shortened commands after 4,000 characters and omitted array entries. A digest
+could therefore describe more scope than the model saw. The builder now rejects
+oversized complete scope and requests narrowing before spending a model call.
+
+Coordination tests measure model-call counts and caller outcomes with fake
+adapters, not real inference latency or model quality. Child isolation, model and
+effort configuration, authorization boundaries, host approvals and execution-time
+TOCTOU limits remain as documented.

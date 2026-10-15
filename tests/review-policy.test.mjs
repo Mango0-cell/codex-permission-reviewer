@@ -37,7 +37,10 @@ test('malformed response and missing auth fail closed', async () => {
   const malformed = createReviewService({ authAvailable: async () => true, runAppServer: async () => 'not JSON' });
   assert.equal((await malformed.runPermissionReviewer(action())).verdict, 'deny');
   const missing = createReviewService({ authAvailable: async () => false, runAppServer: async () => { throw new Error('must not launch'); } });
-  assert.equal((await missing.runPermissionReviewer(action())).verdict, 'deny');
+  const result = await missing.runPermissionReviewer(action());
+  assert.equal(result.verdict, 'needs_user');
+  assert.equal(result.reviewStatus, 'unavailable');
+  assert.equal(result.retryable, false);
 });
 test('explicit reviews bypass result cache; denials are never learned', async () => {
   const home = await mkdtemp(join(tmpdir(), 'cpr-test-'));
@@ -63,21 +66,17 @@ test('request validation rejects unknown fields and raw secrets before review', 
     assert.equal((await service.reviewSensitiveAction(request)).verdict, 'deny');
   }
 });
-test('concurrency and rolling budget fail closed without launching extra reviewers', async () => {
-  let finish;
+test('rolling budget returns retry timing without launching extra reviewers', async () => {
   let calls = 0;
-  const service = createReviewService({ authAvailable: async () => true, runAppServer: async () => { calls++; return new Promise(resolve => { finish = () => resolve(JSON.stringify(allow)); }); } });
+  const service = createReviewService({ authAvailable: async () => true, runAppServer: async () => { calls++; return JSON.stringify(allow); } });
   const request = action({ operationKind: 'process_spawn' });
-  const pending = service.reviewSensitiveAction(request);
-  while (!finish) await new Promise(resolve => setImmediate(resolve));
-  const busy = await service.reviewSensitiveAction(request);
-  assert.ok(busy.detectedHazards.includes('reviewer_busy'));
-  finish();
-  await pending;
-  assert.equal(calls, 1);
-  const limited = createReviewService({ authAvailable: async () => true, runAppServer: async () => JSON.stringify(allow) });
-  for (let i = 0; i < 5; i++) assert.equal((await limited.reviewSensitiveAction(request)).verdict, 'allow');
-  assert.ok((await limited.reviewSensitiveAction(request)).detectedHazards.includes('reviewer_rate_limited'));
+  for (let i = 0; i < 5; i++) assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow');
+  const limited = await service.reviewSensitiveAction(request);
+  assert.ok(limited.detectedHazards.includes('reviewer_rate_limited'));
+  assert.equal(limited.reviewStatus, 'unavailable');
+  assert.equal(limited.retryable, true);
+  assert.ok(limited.retryAfterMs > 0 && limited.retryAfterMs <= 60_000);
+  assert.equal(calls, 5);
 });
 test('learned approvals store hashes only, match exact scope, and respect cancellation', async () => {
   const home = await mkdtemp(join(tmpdir(), 'cpr-memory-'));

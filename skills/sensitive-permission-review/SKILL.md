@@ -77,13 +77,30 @@ without another prompt when the user's active task already explicitly requests
 that exact deployment; encode that as explicit authorization if review is
 otherwise warranted.
 
-Always stop on `needs_user` or `deny`. A user's explicit authorization requires
-one fresh review; it is not permission to ignore a second denial. Do not run,
-write, delete, deploy, authenticate, or retry the proposed action on a reviewer failure. Missing
-managed auth, malformed/refused/incomplete output, model/profile mismatch,
-unexpected app-server item or tool request (including embedded turn/raw items),
-timeout, child failure, malformed metadata, secret-bearing input, and
-output-bound failures are fail-closed.
+A completed `needs_user` or `deny` stops the proposed sensitive action, not
+independent engineering work. For a confirmable action, ask the user to approve
+the exact scope; then submit a fresh review with `userAuthorization: "explicit"`.
+Never infer that authorization from retries or from an unavailable reviewer.
+An actual model denial or non-overridable deterministic blocker still stops the
+action after confirmation.
+
+An incomplete review has `reviewStatus: "unavailable"`. It is not a completed
+model/policy decision and never approves execution. When `retryable` is true,
+`retryAfterMs` tells you when to retry the *review query*. Allow at most one such
+retry within the remaining task deadline; otherwise report the availability
+problem and ask the user for help. Continue unrelated work while waiting when
+host policy permits. Do not retry the proposed command, write, deployment or other
+sensitive operation as a substitute for obtaining review. Missing auth requires
+setup help, not another authorization prompt. Malformed model/protocol output and
+isolation mismatch still fail closed and are not automatically retried.
+
+The plugin queues up to four pending reviews behind one active child; queue wait
+counts toward the request deadline. Rate limits and queue saturation return
+availability metadata instead of pretending that the model denied the action.
+A timed-out review cannot approve an action or populate the ordinary result cache.
+Oversized action metadata must be narrowed or split into exact independent
+scopes; never remove command suffixes, targets or declared side effects merely
+to get an allow.
 
 The result includes a SHA-256 digest of normalized metadata, a review timestamp,
 and expiry. If any command, target, workspace root, reason, side effect, cwd,
@@ -104,7 +121,8 @@ The MCP connection must complete `initialize` before `tools/list` or
 `tools/call`. The server supports `2026-07-28`, `2025-06-18`, and
 `2024-11-05`, exposes
 read-only MCP annotations, bounds streaming JSON-RPC input, and maintains one
-in-flight child review, five reviews per rolling 60 seconds, and a 64-entry
+in-flight child review, up to four queued reviews, five child calls per rolling
+60 seconds, and a 64-entry
 five-minute sanitized digest cache.
 
 This reviewer is an advisory layer at the plugin boundary. It cannot grant

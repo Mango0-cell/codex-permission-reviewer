@@ -14,6 +14,7 @@ export const MAX_OUTPUT_TOKENS = 700;
 export const DEFAULT_REVIEW_TIMEOUT_MS = 30_000;
 export const MAX_REVIEW_TIMEOUT_MS = 60_000;
 export const MAX_CONCURRENT_REVIEWS = 1;
+export const MAX_QUEUED_REVIEWS = 4;
 export const REVIEW_TTL_MS = 5 * 60 * 1_000;
 export const REVIEW_RATE_LIMIT_MAX_CALLS = 5;
 export const REVIEW_RATE_LIMIT_WINDOW_MS = 60 * 1_000;
