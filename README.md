@@ -1,7 +1,7 @@
 # Codex Permission Reviewer
 
-`codex-permission-reviewer` is a Codex plugin that adds a conservative,
-advisory review before high-sensitivity actions. Its local
+`codex-permission-reviewer` adds a lightweight advisory check before actions
+that could cause meaningful damage or data loss. Its local
 `review_sensitive_action` MCP tool sends bounded, redacted metadata to an
 isolated child `codex app-server` using the managed ChatGPT/Codex account and
 the configured reviewer model and effort. The default is `gpt-5.6-luna` at
