@@ -34,3 +34,33 @@ test('trusted read cache rechecks changed files, symlinks, binary and executable
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('verified safe reads retain JavaScript and ES module extensions', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cpr-source-read-'));
+  const previous = process.env.KIT_CODEX_AUTO_PERMISSION_WORKSPACE_ROOTS;
+  process.env.KIT_CODEX_AUTO_PERMISSION_WORKSPACE_ROOTS = root;
+  try {
+    const service = createReviewService({
+      approvalStore: { has: async () => false, remember: async () => {} },
+      authAvailable: async () => true,
+      runAppServer: async () => JSON.stringify(allow),
+    });
+    for (const extension of ['.js', '.mjs']) {
+      const path = join(root, `module${extension}`);
+      await writeFile(path, 'export const ready = true;');
+      const request = action({
+        operationKind: 'file_read',
+        command: undefined,
+        fileTargets: [path],
+        cwd: root,
+        workspaceRoots: [root],
+        userAuthorization: 'none',
+        reason: 'Inspect existing JavaScript source',
+      });
+      assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow', `${extension} should stay on the safe text-file allowlist`);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.KIT_CODEX_AUTO_PERMISSION_WORKSPACE_ROOTS; else process.env.KIT_CODEX_AUTO_PERMISSION_WORKSPACE_ROOTS = previous;
+    await rm(root, { recursive: true, force: true });
+  }
+});

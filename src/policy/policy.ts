@@ -23,7 +23,7 @@ const SAFE_READ_EXTENSIONS = new Set([
   ".jsx",
   ".md",
   ".mdx",
-  ".js",
+  ".mjs",
   ".php",
   ".py",
   ".rb",
