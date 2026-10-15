@@ -1,6 +1,6 @@
 ---
 name: reviewer-pr
-description: Review, prepare, update, or respond to GitHub pull requests for this permission-reviewer repository.
+description: Review, prepare, update, or respond to GitHub pull requests, including registered stacked PRs, for this permission-reviewer repository.
 ---
 
 # Reviewer PR
@@ -18,3 +18,10 @@ checks. Follow the commit guide for staged fixes and responses to feedback.
 
 Honor existing task authorization for GitHub writes. A review does not authorize
 merging; merge only when explicitly requested and the required checks pass.
+
+For dependent PRs, use the stack workflow in the PR guide. Confirm each layer is
+a real dependency or a coherent review unit; unrelated changes should remain
+independent. A chain of PR base branches does not prove GitHub registered a
+native stack. Verify membership and order before relying on stack behavior or
+merging. A native merge of a middle or top PR can include every lower PR, so
+confirm the exact merge set is authorized and all included layers meet checks.
