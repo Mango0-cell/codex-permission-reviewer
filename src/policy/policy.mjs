@@ -144,7 +144,11 @@ function actionTextFields(action) {
 
 function textSignals(action) {
   const values = actionTextFields(action).map(([, value]) => value);
-  const ambiguity = values.some((value) => AMBIGUITY_SIGNAL.test(value));
+  // Risk narration ("this could affect one row") is not uncertainty about the
+  // action's scope. Let the model assess that context without an automatic veto.
+  const ambiguity = actionTextFields(action)
+    .filter(([field]) => field !== "reason" && !field.startsWith("sideEffects["))
+    .some(([, value]) => AMBIGUITY_SIGNAL.test(value));
   const mutation = values.some((value) => MUTATION_SIGNAL.test(value));
   return { ambiguity, mutation };
 }

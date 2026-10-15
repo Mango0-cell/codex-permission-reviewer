@@ -192,3 +192,13 @@ test('oversized complete metadata requests narrower scope without invoking a mod
   assert.deepEqual(result.detectedHazards, ['reviewer_prompt_oversize']);
   assert.equal(calls, 0);
 });
+
+
+test('risk narration does not create another authorization blocker for an exact action', async () => {
+  const reviewer = service(async () => JSON.stringify(allow));
+  const proposed = action({ operationKind: 'database', command: 'UPDATE leads SET status = 1 WHERE id = 2',
+    reason: 'This exact update could affect one record', sideEffects: ['It might change the selected record'],
+    externalSystem: { involved: true, systems: ['production-database'] } });
+  assert.equal((await reviewer.runPermissionReviewer(proposed)).verdict, 'allow');
+  assert.equal((await reviewer.runPermissionReviewer({ ...proposed, userAuthorization: 'none' })).verdict, 'needs_user');
+});
