@@ -1,6 +1,8 @@
 # Project specification
 
-This package is an advisory permission reviewer. It never executes a proposed
+This package is a lightweight advisory check for meaningful damage and data-loss risk.
+Routine engineering work stays in the normal host workflow; avoid extra prompts
+when exact task authorization already exists. It never executes a proposed
 command, grants host permissions, changes host policy, or replaces host approval.
 
 ## Architecture
@@ -33,3 +35,17 @@ Run npm run check, npm test, npm pack --dry-run, and git diff --check. Changes t
 entrypoints or distribution must also preserve package contents, launcher paths,
 MCP schemas, and legacy exports. No release/version bump or installation is
 implied by a source refactor. Record behavior changes and limitations in docs.
+
+## Engineering navigation and scope
+
+Read docs/maintenance.md for the domain map, design-pattern choices, and expertise
+routes. Read docs/maintainers/engineering.md when writing code. Repository skills
+under .agents/skills/ cover architecture, policy, runtime, commits, and GitHub PRs;
+load the route relevant to the task. For Git history and PR work, read
+docs/maintainers/commits.md and docs/maintainers/pull-requests.md. Keep
+architecture/rules-only changes separate from behavioral fixes and performance
+changes unless the user explicitly requests a combined PR. A useful new
+abstraction has a concrete owner, a stable contract, and a demonstrated need;
+prefer explicit module calls over introducing frameworks or event buses. When
+TypeScript is present in the active source scope, use strict types, validate
+external data from unknown, and avoid any.
