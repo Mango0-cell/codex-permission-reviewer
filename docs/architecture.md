@@ -98,6 +98,14 @@ flag inert examples such as echo 'rm -rf path'. Absence of a signal never grants
 permission: model review and other deterministic and host checks still apply.
 Recursive rm is blocked even without force. A literal -- ends option parsing.
 
+Learned-approval eligibility separately recognizes common `rm`, `unlink`,
+`rmdir`, `find -delete`, and SQL row-mutation command forms. This prevents a
+generic `command` operation label from making an exact destructive action
+reusable. That signal suppresses approval memory; it does not by itself block a
+fresh exact explicit review. The bounded tokenizer and SQL keyword checks are
+not complete shell or SQL interpreters and may conservatively flag inert nested
+text.
+
 Safe-read verification and action digests are advisory snapshots. They do not
 bind execution atomically or eliminate TOCTOU. The runtime adapter was relocated
 without changing its isolation protocol. Tests verify composition and selected

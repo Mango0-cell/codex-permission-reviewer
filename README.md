@@ -132,6 +132,9 @@ targets, reasons, data, or secrets are stored. Production database/schema/data
 repair, credentials/permissions, process spawning, destructive operations,
 sensitive-data access, irreversible actions, history rewrites, and ambiguous
 actions are never learned and always require fresh confirmation.
+Common file and row mutation commands are also excluded from learning when the
+caller labels them as a generic command. This is a memory restriction; command
+review outcomes remain governed by the existing deterministic and model policy.
 
 Without explicit authorization, only a narrow, regular-file `file_read` can be
 automatically allowed, and only after deterministic high-sensitivity checks
