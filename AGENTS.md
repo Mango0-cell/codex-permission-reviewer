@@ -1,6 +1,8 @@
 # Project specification
 
-This package is an advisory permission reviewer. It never executes a proposed
+This package is a lightweight advisory check for meaningful damage and data-loss risk.
+Routine engineering work stays in the normal host workflow; avoid extra prompts
+when exact task authorization already exists. It never executes a proposed
 command, grants host permissions, changes host policy, or replaces host approval.
 
 ## Architecture

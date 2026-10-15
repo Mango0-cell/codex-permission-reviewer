@@ -1,6 +1,8 @@
 # Maintaining an agent-written permission reviewer
 
-This plugin provides bounded, advisory analysis of a proposed sensitive action.
+This plugin adds a small advisory check for meaningful damage or data-loss risk.
+Routine tasks should not acquire extra review or confirmation steps. Exact active
+user authorization is reused; genuine risk still has a human confirmation path.
 It is not the executor, the host permission system, or a general code-review
 service. Improving throughput must not turn an unavailable reviewer or missing
 metadata into permission. Humans authorize exact actions; user authorization is
