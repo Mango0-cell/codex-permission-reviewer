@@ -2,8 +2,8 @@
 
 The runtime separates untrusted metadata, deterministic policy, local approval
 state, model execution, orchestration, and MCP I/O. Stable files in scripts/
-preserve installed plugin paths and the existing import API. No runtime package
-dependencies or build step are required.
+preserve installed plugin paths and the existing import API. Runtime dependencies remain Node built-ins; strict TypeScript is compiled during
+development/packaging, so consumers need no build tools.
 
 ```mermaid
 flowchart TD
@@ -19,8 +19,8 @@ flowchart TD
   Runtime --> Child[Ephemeral no-tools reviewer]
 ```
 
-Shared limits live in src/config.mjs. Model/effort configuration is a leaf module
-in src/runtime/config.mjs, so loading contracts does not load process-launch code.
+Shared limits live in src/config.ts. Model/effort configuration is a leaf module
+in src/runtime/config.ts, so loading contracts does not load process-launch code.
 The action and policy domains do not depend on orchestration or transport.
 Architecture tests reject cycles and imports outside these boundaries.
 
@@ -105,15 +105,15 @@ runtime contracts, not every failure path of a real Codex app-server process.
 
 ## Validation
 
-Run npm run check, npm test, npm pack --dry-run, and git diff --check. CI runs
+Run npm ci, npm run check, npm test, npm run test:package, and git diff --check. CI runs
 syntax, tests, and a package dry-run on Node 20, 22, and 24. Fixture commands remain
 strings; tests only launch the local MCP server with invalid metadata or use
 trusted fake model adapters and temporary filesystem/approval state.
 
 ## Availability, answer completeness and human confirmation
 
-Review coordination uses a bounded FIFO executor in src/review/scheduler.mjs and
-trusted runtime/storage adapters in src/review/service.mjs. Four requests may
+Review coordination uses a bounded FIFO executor in src/review/scheduler.ts and
+trusted runtime/storage adapters in src/review/service.ts. Four requests may
 wait behind one child. Each caller owns a deadline and AbortSignal. Cancellation
 removes queued work promptly; a running operation retains its slot through
 cleanup even after its caller stops waiting. This prevents overlapping children.
@@ -146,3 +146,13 @@ Coordination tests measure model-call counts and caller outcomes with fake
 adapters, not real inference latency or model quality. Child isolation, model and
 effort configuration, authorization boundaries, host approvals and execution-time
 TOCTOU limits remain as documented.
+
+## Typed implementation and generated launchers
+
+All maintained application code, CLI code and tests use TypeScript with strict
+checking, unchecked-index checks and explicit DTOs/adapters. Build output goes
+under dist/; public declarations are packaged with the JavaScript. The existing
+bin/cli.mjs and scripts/*.mjs paths are generated compatibility wrappers. They
+are ignored by Git and tested from an installed archive. See typescript.md for
+clean builds, npm prepare semantics and artifact validation. This migration does
+not add new approval policy or runtime model behavior.

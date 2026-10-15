@@ -9,3 +9,7 @@ covering reuse, queue wait, auth and model/policy work. Keep a running child slo
 until adapter cleanup settles even if the caller stops waiting. Never cache
 infrastructure failures, extend cached expiry on access, or reuse an explicit
 confirmation. Availability metadata is host-owned and never an approval.
+
+Maintain implementation and tests as strict TypeScript. Use type-only imports for
+contracts, validate untrusted values from unknown, and keep built JavaScript in
+dist/ or generated compatibility launchers. See docs/typescript.md at repo root.

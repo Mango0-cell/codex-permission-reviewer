@@ -1,17 +1,22 @@
-import { TOOL_NAME, MCP_PROTOCOL_VERSION, SUPPORTED_MCP_PROTOCOL_VERSIONS, MAX_REQUEST_BYTES } from '../config.mjs';
-import { TOOL_DEFINITION } from '../action/contracts.mjs';
-import { isPlainObject, validateProposedAction } from '../action/metadata.mjs';
-import { reviewSensitiveAction } from '../review/service.mjs';
+import type { ReviewResult } from "../action/types.js";
+interface McpContext {
+  protocolVersion: string; initialized: boolean; pendingRequests: Map<string, AbortController>;
+  activeTasks: Set<Promise<void>>; stopping: boolean; shutdownRequested: boolean; stop(): void;
+}
+import { TOOL_NAME, MCP_PROTOCOL_VERSION, SUPPORTED_MCP_PROTOCOL_VERSIONS, MAX_REQUEST_BYTES } from '../config.js';
+import { TOOL_DEFINITION } from '../action/contracts.js';
+import { isPlainObject, validateProposedAction } from '../action/metadata.js';
+import { reviewSensitiveAction } from '../review/service.js';
 
-function jsonRpcError(id, code, message) {
+function jsonRpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
 }
 
-function sendJson(value) {
+function sendJson(value: unknown) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-function toolCallResult(review, isError = false) {
+function toolCallResult(review: ReviewResult, isError = false) {
   return {
     content: [{ type: "text", text: JSON.stringify(review) }],
     structuredContent: review,
@@ -26,7 +31,7 @@ function toolCallResult(review, isError = false) {
  * @param {number} [maxBytes]
  * @returns {AsyncGenerator<{line?: Buffer, oversized?: boolean}>}
  */
-export async function* readBoundedLines(stream, maxBytes = MAX_REQUEST_BYTES) {
+export async function* readBoundedLines(stream: AsyncIterable<Buffer | string>, maxBytes = MAX_REQUEST_BYTES) {
   let pending = Buffer.alloc(0);
   let discarding = false;
   for await (const rawChunk of stream) {
@@ -71,12 +76,12 @@ export async function* readBoundedLines(stream, maxBytes = MAX_REQUEST_BYTES) {
   else if (pending.length > 0) yield { line: pending[pending.length - 1] === 0x0d ? pending.subarray(0, pending.length - 1) : pending };
 }
 
-function rpcRequestKey(value) {
+function rpcRequestKey(value: unknown) {
   if (typeof value === "string" || (typeof value === "number" && Number.isFinite(value))) return `${typeof value}:${value}`;
   return null;
 }
 
-async function handleRpc(message, context) {
+async function handleRpc(message: unknown, context: McpContext) {
   if (!isPlainObject(message) || message.jsonrpc !== "2.0") return jsonRpcError(null, -32600, "Invalid JSON-RPC request.");
   const id = message.id;
   if (message.method === "notifications/initialized") return null;
@@ -84,7 +89,7 @@ async function handleRpc(message, context) {
     const params = isPlainObject(message.params) ? message.params : {};
     if (context.initialized) return jsonRpcError(id, -32600, "Connection is already initialized.");
     const requestedVersion = params.protocolVersion;
-    if (requestedVersion !== undefined && !SUPPORTED_MCP_PROTOCOL_VERSIONS.includes(requestedVersion)) {
+    if (requestedVersion !== undefined && (typeof requestedVersion !== "string" || !SUPPORTED_MCP_PROTOCOL_VERSIONS.includes(requestedVersion))) {
       return jsonRpcError(id, -32602, "Unsupported MCP protocol version.");
     }
     context.protocolVersion = requestedVersion ?? MCP_PROTOCOL_VERSION;
@@ -138,12 +143,12 @@ async function handleRpc(message, context) {
   return jsonRpcError(id, -32601, "Method not found.");
 }
 
-function isExpectedInputClose(error) {
-  return error?.code === "ERR_STREAM_PREMATURE_CLOSE" || error?.code === "ABORT_ERR" || error?.name === "AbortError";
+function isExpectedInputClose(error: unknown) {
+  return isPlainObject(error) && (error.code === "ERR_STREAM_PREMATURE_CLOSE" || error.code === "ABORT_ERR" || error.name === "AbortError");
 }
 
 export async function main() {
-  const context = {
+  const context: McpContext = {
     protocolVersion: MCP_PROTOCOL_VERSION,
     initialized: false,
     pendingRequests: new Map(),
@@ -161,12 +166,12 @@ export async function main() {
   const stop = () => context.stop();
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
-  const dispatch = async (message) => {
+  const dispatch = async (message: unknown) => {
     try {
       const response = await handleRpc(message, context);
-      if (response !== null && message?.id !== undefined && (!context.stopping || context.shutdownRequested)) sendJson(response);
+      if (response !== null && isPlainObject(message) && message.id !== undefined && (!context.stopping || context.shutdownRequested)) sendJson(response);
     } catch {
-      if (message?.id !== undefined && !context.stopping) sendJson(jsonRpcError(message.id, -32603, "Internal reviewer error."));
+      if (isPlainObject(message) && message.id !== undefined && !context.stopping) sendJson(jsonRpcError(message.id, -32603, "Internal reviewer error."));
     }
   };
   try {
@@ -177,7 +182,7 @@ export async function main() {
         continue;
       }
       const line = item.line?.toString("utf8") ?? "";
-      let message;
+      let message: unknown;
       try {
         message = JSON.parse(line);
       } catch {

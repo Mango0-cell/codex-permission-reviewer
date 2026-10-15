@@ -1,25 +1,27 @@
-import { DEFAULT_REVIEW_TIMEOUT_MS, MAX_REVIEW_TIMEOUT_MS, MAX_QUEUED_REVIEWS, REVIEW_TTL_MS, REVIEW_RATE_LIMIT_MAX_CALLS, REVIEW_RATE_LIMIT_WINDOW_MS, MAX_REVIEW_CACHE_ENTRIES } from '../config.mjs';
-import { REVIEW_RESPONSE_SCHEMA } from '../action/contracts.mjs';
-import { validateProposedAction, buildReviewerPromptFromValidated, normalizeActionForReview, actionSha256, ReviewerPromptSizeError } from '../action/metadata.mjs';
-import { hasLearnedApproval, rememberLearnedApproval } from '../approvals/store.mjs';
-import { decorateReview, outputFailure, parseReviewerOutput, reviewerUnavailable } from '../action/review-result.mjs';
-import { deterministicHighSensitivityHazards, verifySafeRead, learnedApprovalBlockers, applyDeterministicPolicy } from '../policy/policy.mjs';
-import { AppServerReviewError, runCodexAppServer, managedAuthAvailable } from '../runtime/app-server-client.mjs';
-import { createReviewScheduler, ReviewSchedulingError, withReviewDeadline } from './scheduler.mjs';
+import type { ReviewOptions, ReviewAdapters } from "./types.js";
+import type { NormalizedAction, ReviewResult } from "../action/types.js";
+import { DEFAULT_REVIEW_TIMEOUT_MS, MAX_REVIEW_TIMEOUT_MS, MAX_QUEUED_REVIEWS, REVIEW_TTL_MS, REVIEW_RATE_LIMIT_MAX_CALLS, REVIEW_RATE_LIMIT_WINDOW_MS, MAX_REVIEW_CACHE_ENTRIES } from '../config.js';
+import { REVIEW_RESPONSE_SCHEMA } from '../action/contracts.js';
+import { validateProposedAction, buildReviewerPromptFromValidated, normalizeActionForReview, actionSha256, ReviewerPromptSizeError } from '../action/metadata.js';
+import { hasLearnedApproval, rememberLearnedApproval } from '../approvals/store.js';
+import { decorateReview, outputFailure, parseReviewerOutput, reviewerUnavailable } from '../action/review-result.js';
+import { deterministicHighSensitivityHazards, verifySafeRead, learnedApprovalBlockers, applyDeterministicPolicy } from '../policy/policy.js';
+import { AppServerReviewError, runCodexAppServer, managedAuthAvailable } from '../runtime/app-server-client.js';
+import { createReviewScheduler, ReviewSchedulingError, withReviewDeadline } from './scheduler.js';
 
 // Only trusted in-process composition can configure adapters, never MCP input.
 export function createReviewService({
   authAvailable = managedAuthAvailable,
   runAppServer = runCodexAppServer,
   approvalStore = { has: hasLearnedApproval, remember: rememberLearnedApproval },
-} = {}) {
+}: ReviewAdapters = {}) {
   const scheduler = createReviewScheduler({ maxQueued: MAX_QUEUED_REVIEWS });
-  const reviewCallTimestamps = [];
-  const reviewCache = new Map();
-  const cloneReview = (review) => structuredClone(review);
-  const cancelled = (action) => outputFailure("reviewer was cancelled", "reviewer_cancelled", action);
+  const reviewCallTimestamps: number[] = [];
+  const reviewCache = new Map<string, { expiresAtMs: number; review: ReviewResult }>();
+  const cloneReview = (review: ReviewResult) => structuredClone(review);
+  const cancelled = (action: NormalizedAction) => outputFailure("reviewer was cancelled", "reviewer_cancelled", action);
 
-  function cachedReviewForDigest(digest) {
+  function cachedReviewForDigest(digest: string) {
     const entry = reviewCache.get(digest);
     if (!entry) return null;
     if (entry.expiresAtMs <= Date.now()) {
@@ -32,7 +34,7 @@ export function createReviewService({
     return cloneReview(entry.review);
   }
 
-  function cacheReviewForDigest(digest, review) {
+  function cacheReviewForDigest(digest: string, review: ReviewResult) {
     // Infrastructure failures must not poison an exact scope for five minutes.
     // Only completed policy/model results are reusable. Error codes are not
     // model-controlled fields; reserved reviewer_* hazards are excluded too.
@@ -40,22 +42,22 @@ export function createReviewService({
     const expiresAtMs = Math.min(Date.parse(review.expiresAt), Date.now() + REVIEW_TTL_MS);
     if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) return;
     reviewCache.delete(digest);
-    while (reviewCache.size >= MAX_REVIEW_CACHE_ENTRIES) reviewCache.delete(reviewCache.keys().next().value);
+    while (reviewCache.size >= MAX_REVIEW_CACHE_ENTRIES) reviewCache.delete(reviewCache.keys().next().value!);
     reviewCache.set(digest, { expiresAtMs, review: cloneReview(review) });
   }
 
   function consumeReviewBudget() {
     const now = Date.now();
     const cutoff = now - REVIEW_RATE_LIMIT_WINDOW_MS;
-    while (reviewCallTimestamps.length && reviewCallTimestamps[0] <= cutoff) reviewCallTimestamps.shift();
+    while (reviewCallTimestamps.length && reviewCallTimestamps[0]! <= cutoff) reviewCallTimestamps.shift();
     if (reviewCallTimestamps.length >= REVIEW_RATE_LIMIT_MAX_CALLS) {
-      return Math.max(1, reviewCallTimestamps[0] + REVIEW_RATE_LIMIT_WINDOW_MS - now);
+      return Math.max(1, reviewCallTimestamps[0]! + REVIEW_RATE_LIMIT_WINDOW_MS - now);
     }
     reviewCallTimestamps.push(now);
     return 0;
   }
 
-  async function reusableReview(action, digest, signal) {
+  async function reusableReview(action: NormalizedAction, digest: string, signal?: AbortSignal): Promise<ReviewResult | null> {
     if (signal?.aborted) return cancelled(action);
     if (action.userAuthorization === "explicit") return null;
     if (learnedApprovalBlockers(action).length === 0) {
@@ -94,7 +96,7 @@ export function createReviewService({
     return signal?.aborted ? cancelled(action) : cached;
   }
 
-  async function modelReview(action, signal, remainingMs) {
+  async function modelReview(action: NormalizedAction, signal: AbortSignal, remainingMs: () => number): Promise<ReviewResult> {
     if (signal.aborted) return cancelled(action);
     let prompt;
     try { prompt = buildReviewerPromptFromValidated(action); }
@@ -128,7 +130,7 @@ export function createReviewService({
     }
   }
 
-  async function scheduledReview(action, options, reuse) {
+  async function scheduledReview(action: NormalizedAction, options: ReviewOptions, reuse: boolean): Promise<ReviewResult> {
     const rawTimeout = options.timeoutMs ?? DEFAULT_REVIEW_TIMEOUT_MS;
     if (typeof rawTimeout !== "number" || !Number.isFinite(rawTimeout) || rawTimeout <= 0) {
       return outputFailure("invalid review timeout", "invalid_review_timeout", action);
@@ -170,13 +172,13 @@ export function createReviewService({
     }
   }
 
-  async function runPermissionReviewer(rawAction, options = {}) {
+  async function runPermissionReviewer(rawAction: unknown, options: ReviewOptions = {}) {
     const action = normalizeActionForReview(rawAction);
     if (!action) return outputFailure("invalid action metadata", "invalid_action_metadata");
     return scheduledReview(action, options, false);
   }
 
-  async function reviewSensitiveAction(rawAction, options = {}) {
+  async function reviewSensitiveAction(rawAction: unknown, options: ReviewOptions = {}) {
     const validation = validateProposedAction(rawAction);
     if (!validation.ok) return outputFailure("invalid action metadata", "invalid_action_metadata");
     const action = validation.value;

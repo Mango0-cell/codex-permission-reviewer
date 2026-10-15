@@ -1,5 +1,8 @@
-import { APP_SERVER_MODEL, APP_SERVER_EFFORT, DEFAULT_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_LINE_BYTES, MAX_APP_SERVER_STDOUT_BYTES, MAX_APP_SERVER_STDERR_BYTES, MAX_APP_SERVER_MESSAGE_BYTES } from "./config.mjs";
-export * from "./config.mjs";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import type { Stats } from "node:fs";
+import type { ExecutableIdentity, SafeItem, ReviewState, UnknownRecord, AppServerOptions } from "./protocol-types.js";
+import { APP_SERVER_MODEL, APP_SERVER_EFFORT, DEFAULT_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_LINE_BYTES, MAX_APP_SERVER_STDOUT_BYTES, MAX_APP_SERVER_STDERR_BYTES, MAX_APP_SERVER_MESSAGE_BYTES } from "./config.js";
+export * from "./config.js";
 import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
 import { chmod, lstat, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
@@ -90,22 +93,22 @@ const SAFE_NOTIFICATION_METHODS = new Set([
 const SAFE_ITEM_TYPES = new Set(["userMessage", "reasoning", "agentMessage"]);
 
 export class AppServerReviewError extends Error {
-  constructor(hazard, message = "The local reviewer did not complete safely.") {
+  constructor(readonly hazard: string, message = "The local reviewer did not complete safely.") {
     super(message);
     this.name = "AppServerReviewError";
-    this.hazard = hazard;
+
   }
 }
 
-function fail(hazard, message) {
+function fail(hazard: string, message: string): never {
   throw new AppServerReviewError(hazard, message);
 }
 
-function isObject(value) {
+function isObject(value: unknown): value is UnknownRecord {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function boundedJson(value) {
+function boundedJson(value: unknown) {
   let serialized;
   try {
     serialized = JSON.stringify(value);
@@ -118,11 +121,11 @@ function boundedJson(value) {
   return serialized;
 }
 
-function parseLine(line) {
+function parseLine(line: string): UnknownRecord {
   if (typeof line !== "string" || Buffer.byteLength(line, "utf8") > MAX_APP_SERVER_LINE_BYTES) {
     fail("reviewer_output_oversize", "The app-server line exceeded the size limit.");
   }
-  let value;
+  let value: unknown;
   try {
     value = JSON.parse(line);
   } catch {
@@ -132,7 +135,7 @@ function parseLine(line) {
   return value;
 }
 
-async function* readBoundedLines(stream, maxBytes = MAX_APP_SERVER_LINE_BYTES) {
+async function* readBoundedLines(stream: AsyncIterable<Buffer | string>, maxBytes = MAX_APP_SERVER_LINE_BYTES) {
   let pending = Buffer.alloc(0);
   let discarding = false;
   for await (const rawChunk of stream) {
@@ -183,11 +186,11 @@ async function* readBoundedLines(stream, maxBytes = MAX_APP_SERVER_LINE_BYTES) {
 
 export const readBoundedAppServerLines = readBoundedLines;
 
-function jsonRpcRequest(id, method, params) {
+function jsonRpcRequest(id: number, method: string, params: object) {
   return { id, method, params };
 }
 
-export function buildAppServerRequests({ cwd, prompt, outputSchema }) {
+export function buildAppServerRequests({ cwd, prompt, outputSchema }: { cwd: string; prompt: string; outputSchema: object }) {
   if (!isAbsolute(cwd) || typeof prompt !== "string" || prompt.length === 0 || !isObject(outputSchema)) {
     throw new TypeError("Invalid app-server request inputs.");
   }
@@ -203,7 +206,7 @@ export function buildAppServerRequests({ cwd, prompt, outputSchema }) {
       ephemeral: true,
       cwd,
     }),
-    turnStart: (threadId) => jsonRpcRequest(EXPECTED_TURN_START_ID, "turn/start", {
+    turnStart: (threadId: string) => jsonRpcRequest(EXPECTED_TURN_START_ID, "turn/start", {
       threadId,
       model: APP_SERVER_MODEL,
       effort: APP_SERVER_EFFORT,
@@ -213,9 +216,9 @@ export function buildAppServerRequests({ cwd, prompt, outputSchema }) {
   });
 }
 
-export function buildMinimalChildEnvironment(parentEnv = process.env, codexHome) {
+export function buildMinimalChildEnvironment(parentEnv: NodeJS.ProcessEnv = process.env, codexHome: string) {
   if (!isAbsolute(codexHome)) throw new TypeError("The child CODEX_HOME must be absolute.");
-  const env = { CODEX_HOME: codexHome, NO_COLOR: "1" };
+  const env: Record<string, string> = { CODEX_HOME: codexHome, NO_COLOR: "1" };
   for (const key of ALLOWED_ENV_KEYS) {
     if (key === "HOME") {
       env.HOME = codexHome;
@@ -236,7 +239,7 @@ function managedCodexHome() {
   return join(homedir(), ".codex");
 }
 
-function executableIdentity(stats, resolvedPath) {
+function executableIdentity(stats: Stats, resolvedPath: string): ExecutableIdentity {
   return {
     path: resolvedPath,
     device: String(stats.dev),
@@ -247,12 +250,12 @@ function executableIdentity(stats, resolvedPath) {
   };
 }
 
-async function inspectCodexExecutable(candidate) {
+async function inspectCodexExecutable(candidate: string) {
   let linkStats;
   try {
     linkStats = await lstat(candidate);
   } catch (error) {
-    if (error?.code === "ENOENT") return null;
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return null;
     fail("reviewer_executable_unavailable", "The pinned Codex executable could not be inspected.");
   }
   let resolvedPath;
@@ -291,7 +294,7 @@ export async function resolveCodexExecutable(pathValue = process.env.PATH) {
   fail("reviewer_executable_unavailable", "The Codex executable was not found in an absolute PATH entry.");
 }
 
-async function verifyPinnedCodexExecutable(identity) {
+async function verifyPinnedCodexExecutable(identity: ExecutableIdentity) {
   const current = await inspectCodexExecutable(identity.path);
   if (current === null || current.path !== identity.path || current.device !== identity.device || current.inode !== identity.inode || current.size !== identity.size || current.mtimeMs !== identity.mtimeMs || current.mode !== identity.mode) {
     fail("reviewer_executable_changed", "The pinned Codex executable changed before launch.");
@@ -299,7 +302,7 @@ async function verifyPinnedCodexExecutable(identity) {
   return current.path;
 }
 
-async function assertManagedAuthFile(sourceHome) {
+async function assertManagedAuthFile(sourceHome: string) {
   const authPath = join(sourceHome, MANAGED_AUTH_FILENAME);
   let stats;
   try {
@@ -333,7 +336,7 @@ async function makeTemporaryRuntime() {
   }
 }
 
-function processGroupSignal(child, signal) {
+function processGroupSignal(child: ChildProcessWithoutNullStreams | undefined, signal: NodeJS.Signals) {
   if (!child?.pid || !Number.isInteger(child.pid) || child.pid <= 0) return false;
   try {
     process.kill(-child.pid, signal);
@@ -348,9 +351,9 @@ function processGroupSignal(child, signal) {
   }
 }
 
-function waitForClose(child, timeoutMs = CHILD_CLEANUP_TIMEOUT_MS) {
+function waitForClose(child: ChildProcessWithoutNullStreams | undefined, timeoutMs = CHILD_CLEANUP_TIMEOUT_MS) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
-  return new Promise((resolvePromise) => {
+  return new Promise<void>((resolvePromise) => {
     let finished = false;
     const done = () => {
       if (finished) return;
@@ -366,23 +369,23 @@ function waitForClose(child, timeoutMs = CHILD_CLEANUP_TIMEOUT_MS) {
   });
 }
 
-async function stopChild(child) {
+async function stopChild(child: ChildProcessWithoutNullStreams | undefined) {
   if (!child) return;
   processGroupSignal(child, "SIGTERM");
-  await Promise.race([waitForClose(child, 600), new Promise((resolvePromise) => setTimeout(resolvePromise, 650))]);
+  await Promise.race([waitForClose(child, 600), new Promise<void>((resolvePromise) => setTimeout(resolvePromise, 650))]);
   if (child.exitCode === null && child.signalCode === null) processGroupSignal(child, "SIGKILL");
   await waitForClose(child, CHILD_CLEANUP_TIMEOUT_MS);
 }
 
-function outputFailureFromChild(error) {
+function outputFailureFromChild(error: unknown): never {
   if (error instanceof AppServerReviewError) throw error;
   throw new AppServerReviewError("reviewer_child_failure", "The local reviewer child failed.");
 }
 
-function validateRpcResponse(message, id) {
+function validateRpcResponse(message: unknown, id: number): UnknownRecord {
   if (!isObject(message) || message.id !== id) fail("reviewer_malformed_output", "The app-server response id was invalid.");
   if (Object.hasOwn(message, "error")) {
-    const code = Number.isInteger(message.error?.code) ? String(Math.abs(message.error.code)) : "unknown";
+    const code = isObject(message.error) && typeof message.error.code === "number" && Number.isInteger(message.error.code) ? String(Math.abs(message.error.code)) : "unknown";
     const detail = JSON.stringify(message.error ?? {}).slice(0, 2_000);
     const category = /default_permissions/iu.test(detail)
       ? "defaultprofile"
@@ -415,34 +418,34 @@ function validateRpcResponse(message, id) {
   return message.result;
 }
 
-function validateThreadStart(result, cwd) {
+function validateThreadStart(result: UnknownRecord, cwd: string) {
   if (result.model !== APP_SERVER_MODEL) {
     fail("reviewer_thread_model_mismatch", "The app-server selected an unexpected thread model.");
   }
   if (result.approvalPolicy !== "never") {
     fail("reviewer_approval_policy_mismatch", "The app-server selected an unexpected approval policy.");
   }
-  if (result.cwd !== cwd || result.thread?.ephemeral !== true || typeof result.thread?.id !== "string") {
+  if (result.cwd !== cwd || !isObject(result.thread) || result.thread.ephemeral !== true || typeof result.thread.id !== "string") {
     fail("reviewer_malformed_output", "The app-server thread configuration was invalid.");
   }
   const profile = result.activePermissionProfile;
   if (!isObject(profile) || profile.id !== EXPECTED_PERMISSION_PROFILE) {
     fail("reviewer_permission_profile_mismatch", "The app-server did not activate the no-tools profile.");
   }
-  if (result.sandbox !== undefined && result.sandbox?.type !== "readOnly") {
+  if (result.sandbox !== undefined && (!isObject(result.sandbox) || result.sandbox.type !== "readOnly")) {
     fail("reviewer_permission_profile_mismatch", "The app-server reported a non-read-only sandbox.");
   }
   return result.thread.id;
 }
 
-function validateTurnStart(result) {
+function validateTurnStart(result: UnknownRecord) {
   const turn = result.turn;
   if (!isObject(turn) || typeof turn.id !== "string" || typeof turn.status !== "string") {
     fail("reviewer_malformed_output", "The app-server turn response was invalid.");
   }
   if (Object.hasOwn(turn, "items")) {
     if (!Array.isArray(turn.items)) fail("reviewer_malformed_output", "The app-server turn items were invalid.");
-    for (const item of turn.items) validateItem(item);
+    validateItems(turn.items);
   }
   if (turn.status !== "inProgress" && turn.status !== "completed") {
     fail("reviewer_child_failure", "The app-server turn did not start successfully.");
@@ -450,15 +453,15 @@ function validateTurnStart(result) {
   return turn.id;
 }
 
-function diagnosticToken(value) {
+function diagnosticToken(value: unknown) {
   return typeof value === "string"
     ? value.toLocaleLowerCase().replace(/[^a-z0-9]+/gu, "_").replace(/^_+|_+$/gu, "").slice(0, 48) || "unknown"
     : "unknown";
 }
 
-function validateItem(item) {
+function validateItem(item: unknown): asserts item is SafeItem {
   if (!isObject(item) || typeof item.type !== "string" || !SAFE_ITEM_TYPES.has(item.type)) {
-    fail(`reviewer_unexpected_item_${diagnosticToken(item?.type)}`, "The app-server emitted an unexpected item.");
+    fail(`reviewer_unexpected_item_${diagnosticToken(isObject(item) ? item.type : undefined)}`, "The app-server emitted an unexpected item.");
   }
   if (typeof item.id !== "string") fail("reviewer_malformed_output", "The app-server item id was invalid.");
   if (item.type === "agentMessage" && typeof item.text !== "string" && item.text !== undefined) {
@@ -466,7 +469,12 @@ function validateItem(item) {
   }
 }
 
-function validateTurnNotification(params, expectedStatus) {
+function validateItems(items: unknown): asserts items is SafeItem[] {
+  if (!Array.isArray(items)) fail("reviewer_malformed_output", "The app-server turn items were invalid.");
+  for (const item of items as unknown[]) validateItem(item);
+}
+
+function validateTurnNotification(params: unknown, expectedStatus: string) {
   if (!isObject(params) || typeof params.threadId !== "string" || !isObject(params.turn)) {
     fail("reviewer_malformed_output", "The app-server turn notification was invalid.");
   }
@@ -476,11 +484,11 @@ function validateTurnNotification(params, expectedStatus) {
   }
   if (Object.hasOwn(turn, "items")) {
     if (!Array.isArray(turn.items)) fail("reviewer_malformed_output", "The app-server turn items were invalid.");
-    for (const item of turn.items) validateItem(item);
+    validateItems(turn.items);
   }
 }
 
-function validateThreadSettingsNotification(params, state) {
+function validateThreadSettingsNotification(params: unknown, state: ReviewState) {
   if (!isObject(params) || typeof params.threadId !== "string" || !isObject(params.threadSettings)) {
     fail("reviewer_malformed_output", "The app-server thread settings notification was invalid.");
   }
@@ -504,7 +512,7 @@ function validateThreadSettingsNotification(params, state) {
   state.settingsThreadId = params.threadId;
 }
 
-function validateThreadStatusNotification(params, state) {
+function validateThreadStatusNotification(params: unknown, state: ReviewState) {
   if (!isObject(params) || typeof params.threadId !== "string" || !isObject(params.status)) {
     fail("reviewer_malformed_output", "The app-server thread status notification was invalid.");
   }
@@ -520,7 +528,7 @@ function validateThreadStatusNotification(params, state) {
   state.statusThreadId = params.threadId;
 }
 
-function validTokenUsageBreakdown(value) {
+function validTokenUsageBreakdown(value: unknown) {
   if (!isObject(value)) return false;
   return [
     "totalTokens",
@@ -529,10 +537,10 @@ function validTokenUsageBreakdown(value) {
     "cacheWriteInputTokens",
     "outputTokens",
     "reasoningOutputTokens",
-  ].every((key) => Number.isSafeInteger(value[key]) && value[key] >= 0);
+  ].every((key) => typeof value[key] === "number" && Number.isSafeInteger(value[key]) && value[key] >= 0);
 }
 
-function validateThreadTokenUsageNotification(params, state) {
+function validateThreadTokenUsageNotification(params: unknown, state: ReviewState) {
   if (
     !isObject(params) ||
     typeof params.threadId !== "string" ||
@@ -541,7 +549,7 @@ function validateThreadTokenUsageNotification(params, state) {
     !validTokenUsageBreakdown(params.tokenUsage.total) ||
     !validTokenUsageBreakdown(params.tokenUsage.last) ||
     (params.tokenUsage.modelContextWindow !== null &&
-      (!Number.isSafeInteger(params.tokenUsage.modelContextWindow) || params.tokenUsage.modelContextWindow <= 0))
+      (typeof params.tokenUsage.modelContextWindow !== "number" || !Number.isSafeInteger(params.tokenUsage.modelContextWindow) || params.tokenUsage.modelContextWindow <= 0))
   ) {
     fail("reviewer_malformed_output", "The app-server token usage notification was invalid.");
   }
@@ -555,7 +563,7 @@ function validateThreadTokenUsageNotification(params, state) {
   state.tokenUsageTurnId = params.turnId;
 }
 
-function consumeServerMessage(message, state) {
+function consumeServerMessage(message: UnknownRecord, state: ReviewState) {
   if (state.turnCompleted) fail("reviewer_unexpected_trailing_output", "The app-server emitted output after terminal completion.");
   if (Object.hasOwn(message, "id")) {
     if (message.id === EXPECTED_INITIALIZE_ID || message.id === EXPECTED_THREAD_START_ID || message.id === EXPECTED_TURN_START_ID) {
@@ -620,10 +628,10 @@ function consumeServerMessage(message, state) {
     }
     if (Object.hasOwn(turn, "items")) {
       if (!Array.isArray(turn.items)) fail("reviewer_malformed_output", "The app-server completed turn items were invalid.");
-      for (const item of turn.items) validateItem(item);
+      validateItems(turn.items);
       const agentItems = turn.items.filter((item) => item.type === "agentMessage");
       if (agentItems.length !== 1) fail("reviewer_malformed_output", "The app-server turn did not contain one assistant message.");
-      const [item] = agentItems;
+      const item = agentItems[0]!;
       if (state.agentMessageCount === 0) {
         state.agentMessageCount = 1;
         state.agentMessageId = item.id;
@@ -636,12 +644,12 @@ function consumeServerMessage(message, state) {
   }
 }
 
-async function writeRequest(child, request) {
+async function writeRequest(child: ChildProcessWithoutNullStreams, request: object) {
   const line = `${boundedJson(request)}\n`;
   if (!child.stdin || child.stdin.destroyed || child.stdin.writableEnded) {
     fail("reviewer_child_failure", "The app-server input stream was unavailable.");
   }
-  await new Promise((resolvePromise, rejectPromise) => {
+  await new Promise<void>((resolvePromise, rejectPromise) => {
     const onError = () => rejectPromise(new AppServerReviewError("reviewer_child_failure", "The app-server input stream failed."));
     child.stdin.once("error", onError);
     child.stdin.write(line, "utf8", (error) => {
@@ -652,13 +660,13 @@ async function writeRequest(child, request) {
   }).catch(outputFailureFromChild);
 }
 
-async function waitForResponse(state, id, readerPromise, childError, abortPromise) {
+async function waitForResponse(state: ReviewState, id: number, readerPromise: Promise<void>, childError: Promise<never>, abortPromise: Promise<never>) {
   while (!state.responses.has(id)) {
     const readerOutcome = readerPromise.then(() => {
       if (!state.responses.has(id)) fail("reviewer_malformed_output", "The app-server completed without the expected response.");
     });
     await Promise.race([
-      new Promise((resolvePromise) => setTimeout(resolvePromise, 5)),
+      new Promise<void>((resolvePromise) => setTimeout(resolvePromise, 5)),
       readerOutcome,
       childError,
       abortPromise,
@@ -666,11 +674,11 @@ async function waitForResponse(state, id, readerPromise, childError, abortPromis
   }
 }
 
-function waitForChildTermination(child, timeoutMs) {
+function waitForChildTermination(child: ChildProcessWithoutNullStreams, timeoutMs: number) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
-  return new Promise((resolvePromise, rejectPromise) => {
+  return new Promise<void>((resolvePromise, rejectPromise) => {
     let settled = false;
-    const finish = (error = null) => {
+    const finish = (error: Error | null = null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -688,13 +696,13 @@ function waitForChildTermination(child, timeoutMs) {
   });
 }
 
-async function runReader(child, state, timeoutMs) {
+async function runReader(child: ChildProcessWithoutNullStreams, state: ReviewState, timeoutMs: number) {
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let stderrExceeded = false;
   let deadlineReached = false;
   const startedAt = Date.now();
-  const onStderrData = (chunk) => {
+  const onStderrData = (chunk: Buffer) => {
     stderrBytes += Buffer.byteLength(chunk);
     if (stderrBytes > MAX_APP_SERVER_STDERR_BYTES) stderrExceeded = true;
   };
@@ -743,7 +751,8 @@ async function runReader(child, state, timeoutMs) {
  * @param {{signal?: AbortSignal, timeoutMs?: number, outputSchema: object}} options
  * @returns {Promise<string>}
  */
-export async function runCodexAppServer(prompt, options = {}) {
+export function runCodexAppServer(prompt: string, options: AppServerOptions): Promise<string>;
+export async function runCodexAppServer(prompt: unknown, options: Partial<AppServerOptions> = {}): Promise<string> {
   if (typeof prompt !== "string" || prompt.length === 0 || Buffer.byteLength(prompt, "utf8") > MAX_APP_SERVER_STDOUT_BYTES) {
     throw new AppServerReviewError("reviewer_prompt_oversize", "The reviewer prompt was invalid.");
   }
@@ -751,7 +760,7 @@ export async function runCodexAppServer(prompt, options = {}) {
   if (options.signal?.aborted) throw new AppServerReviewError("reviewer_cancelled", "The reviewer was cancelled.");
   const timeoutMs = Math.min(Math.max(Number(options.timeoutMs ?? DEFAULT_APP_SERVER_TIMEOUT_MS), 1), MAX_APP_SERVER_TIMEOUT_MS);
   const runtime = await makeTemporaryRuntime();
-  let child;
+  let child: ChildProcessWithoutNullStreams | undefined;
   const controller = new AbortController();
   const onAbort = () => controller.abort();
   options.signal?.addEventListener?.("abort", onAbort, { once: true });
@@ -766,7 +775,7 @@ export async function runCodexAppServer(prompt, options = {}) {
       detached: true,
       stdio: ["pipe", "pipe", "pipe"],
     });
-    const state = {
+    const state: ReviewState = {
       responses: new Map(),
       agentMessageCount: 0,
       agentMessageId: null,
@@ -782,9 +791,9 @@ export async function runCodexAppServer(prompt, options = {}) {
       tokenUsageTurnId: null,
       sawExpectedEffort: false,
     };
-    const childError = new Promise((_, rejectPromise) => child.once("error", () => rejectPromise(new AppServerReviewError("reviewer_child_failure", "The app-server child failed."))));
+    const childError = new Promise<never>((_, rejectPromise) => child!.once("error", () => rejectPromise(new AppServerReviewError("reviewer_child_failure", "The app-server child failed."))));
     childError.catch(() => undefined);
-    const abortPromise = new Promise((_, rejectPromise) => {
+    const abortPromise = new Promise<never>((_, rejectPromise) => {
       if (controller.signal.aborted) rejectPromise(new AppServerReviewError("reviewer_cancelled", "The reviewer was cancelled."));
       else controller.signal.addEventListener("abort", () => rejectPromise(new AppServerReviewError("reviewer_cancelled", "The reviewer was cancelled.")), { once: true });
     });

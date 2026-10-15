@@ -1,15 +1,17 @@
+import type { NormalizedAction } from "../src/action/types.js";
+import type { ReviewAdapters } from "../src/review/types.js";
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createReviewService } from '../src/review/service.mjs';
-import { AppServerReviewError } from '../src/runtime/app-server-client.mjs';
-import { action, allow } from './helpers.mjs';
+import { createReviewService } from '../src/review/service.js';
+import { AppServerReviewError } from '../src/runtime/app-server-client.js';
+import { action, allow } from './helpers.js';
 
-function deferred() {
-  let resolve;
-  const promise = new Promise(done => { resolve = done; });
+function deferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>(done => { resolve = done; });
   return { promise, resolve };
 }
-function service(runAppServer, extra = {}) {
+function service(runAppServer: NonNullable<ReviewAdapters["runAppServer"]>, extra: ReviewAdapters = {}) {
   return createReviewService({ authAvailable: async () => true, approvalStore: { has: async () => false, remember: async () => {} }, runAppServer, ...extra });
 }
 const request = (command = 'printf hello') => action({ command, userAuthorization: 'none' });
@@ -28,8 +30,8 @@ test('burst of identical unconfirmed reviews spends one model call and returns i
   const results = await Promise.all([first, ...followers]);
   assert.equal(calls, 1);
   assert.ok(results.every(result => result.verdict === 'deny' && result.reviewStatus === undefined));
-  results[0].detectedHazards.push('mutated');
-  assert.ok(!results[1].detectedHazards.includes('mutated'));
+  results[0]!.detectedHazards.push('mutated');
+  assert.ok(!results[1]!.detectedHazards.includes('mutated'));
 });
 
 test('explicit reviews remain fresh and run serially rather than returning busy denials', async () => {
@@ -74,7 +76,7 @@ test('queue overflow is retryable and cancellation promptly removes a queued req
   assert.deepEqual(overflow.detectedHazards, ['reviewer_queue_full']);
   assert.equal(overflow.retryable, true);
   controller.abort();
-  assert.ok((await waiting[0]).detectedHazards.includes('reviewer_cancelled'));
+  assert.ok((await waiting[0]!).detectedHazards.includes('reviewer_cancelled'));
   const replacement = reviewer.runPermissionReviewer(request());
   release.resolve();
   await Promise.all([first, replacement, ...waiting]);
@@ -99,7 +101,7 @@ test('active timeout aborts its adapter without releasing the slot before cleanu
   let calls = 0, sawAbort = false;
   const reviewer = service(async (_, { signal }) => {
     calls++; entered.resolve();
-    await new Promise(resolve => signal.addEventListener('abort', () => { sawAbort = true; resolve(); }, { once: true }));
+    await new Promise<void>(resolve => signal!.addEventListener('abort', () => { sawAbort = true; resolve(); }, { once: true }));
     await cleanup.promise;
     return JSON.stringify(allow);
   });
@@ -132,7 +134,7 @@ test('human can confirm an exact sensitive action through a fresh model review',
 
 test('human authorization cannot turn broad SQL or a model denial into allow', async () => {
   const reviewer = service(async () => JSON.stringify(allow));
-  for (const userAuthorization of ['none', 'explicit']) {
+  for (const userAuthorization of ['none', 'explicit'] as const) {
     const result = await reviewer.reviewSensitiveAction(action({ operationKind: 'database', command: 'DELETE FROM leads', userAuthorization }));
     assert.equal(result.verdict, 'deny');
   }
@@ -143,14 +145,14 @@ test('human authorization cannot turn broad SQL or a model denial into allow', a
 for (const timeoutMs of [NaN, Infinity, 0, -1, '10']) {
   test(`invalid timeout ${timeoutMs} fails without launching a child`, async () => {
     const reviewer = service(async () => { throw new Error('must not run'); });
-    assert.deepEqual((await reviewer.runPermissionReviewer(request(), { timeoutMs })).detectedHazards, ['invalid_review_timeout']);
+    assert.deepEqual((await reviewer.runPermissionReviewer(request(), { timeoutMs: timeoutMs as number })).detectedHazards, ['invalid_review_timeout']);
   });
 }
 
 test('deadline also bounds learned-state lookup before a queue slot is acquired', async () => {
-  const lookup = deferred();
+  const lookup = deferred<boolean>();
   let calls = 0;
-  const reviewer = service(async () => { calls++; return JSON.stringify(allow); }, { approvalStore: { has: () => lookup.promise } });
+  const reviewer = service(async () => { calls++; return JSON.stringify(allow); }, { approvalStore: { has: () => lookup.promise, remember: async () => {} } });
   const result = await reviewer.reviewSensitiveAction(request(), { timeoutMs: 15 });
   assert.deepEqual(result.detectedHazards, ['reviewer_timeout']);
   lookup.resolve(true);
@@ -174,12 +176,13 @@ test('a cached policy result bypasses an unrelated active review', async () => {
 });
 
 test('complete command suffix and every declared side effect reach the reviewer', async () => {
-  let reviewed;
-  const reviewer = service(async (prompt) => { reviewed = JSON.parse(prompt.split('PROPOSED ACTION METADATA (UNTRUSTED DATA):\n')[1]); return JSON.stringify(deny); });
+  let reviewed: NormalizedAction | undefined;
+  const reviewer = service(async (prompt) => { reviewed = JSON.parse(prompt.split('PROPOSED ACTION METADATA (UNTRUSTED DATA):\n')[1]!); return JSON.stringify(deny); });
   const command = 'printf ' + 'safe '.repeat(1_000) + '; printf final-suffix';
   const sideEffects = Array.from({ length: 20 }, (_, i) => `Effect ${i}: inspect fixture output`);
   const result = await reviewer.runPermissionReviewer(action({ command, sideEffects }));
   assert.equal(result.verdict, 'deny');
+  assert.ok(reviewed);
   assert.equal(reviewed.command, command);
   assert.deepEqual(reviewed.sideEffects, sideEffects);
 });

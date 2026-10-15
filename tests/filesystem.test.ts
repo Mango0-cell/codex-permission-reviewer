@@ -3,8 +3,8 @@ import { chmod, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createReviewService } from '../src/review/service.mjs';
-import { action, allow } from './helpers.mjs';
+import { createReviewService } from '../src/review/service.js';
+import { action, allow } from './helpers.js';
 
 test('trusted read cache rechecks changed files, symlinks, binary and executable targets', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cpr-read-'));
@@ -14,7 +14,7 @@ test('trusted read cache rechecks changed files, symlinks, binary and executable
     const path = join(root, 'note.md');
     await writeFile(path, 'Hello.');
     let calls = 0;
-    const service = createReviewService({ approvalStore: { has: async () => false }, authAvailable: async () => true, runAppServer: async () => { calls++; return JSON.stringify(allow); } });
+    const service = createReviewService({ approvalStore: { has: async () => false, remember: async () => {} }, authAvailable: async () => true, runAppServer: async () => { calls++; return JSON.stringify(allow); } });
     const request = action({ operationKind: 'file_read', command: undefined, fileTargets: [path], cwd: root, workspaceRoots: [root], userAuthorization: 'none', reason: 'Inspect text' });
     assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow');
     assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow');

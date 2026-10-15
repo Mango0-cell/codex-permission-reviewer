@@ -1,19 +1,20 @@
+import type { ActionFlag, NormalizedAction, OperationKind, Reversibility, UserAuthorization, Validation } from "./types.js";
 import { createHash } from "node:crypto";
 import { isAbsolute } from "node:path";
-import { MAX_PROMPT_CHARS, MAX_OPERATION_KIND_LENGTH, MAX_COMMAND_LENGTH, MAX_CWD_LENGTH, MAX_REASON_LENGTH, MAX_SIDE_EFFECT_LENGTH, MAX_FILE_TARGET_LENGTH, MAX_WORKSPACE_ROOT_LENGTH, MAX_FLAG_DETAIL_LENGTH, MAX_SIDE_EFFECTS, MAX_FILE_TARGETS, MAX_WORKSPACE_ROOTS, MAX_FLAG_DETAILS, MAX_CANONICAL_ACTION_BYTES } from '../config.mjs';
-import { OPERATION_KINDS, REVERSIBILITY_VALUES, USER_AUTHORIZATION_VALUES, ACTION_KEYS, FLAG_KEYS, REVIEWER_INSTRUCTIONS } from './contracts.mjs';
+import { MAX_PROMPT_CHARS, MAX_OPERATION_KIND_LENGTH, MAX_COMMAND_LENGTH, MAX_CWD_LENGTH, MAX_REASON_LENGTH, MAX_SIDE_EFFECT_LENGTH, MAX_FILE_TARGET_LENGTH, MAX_WORKSPACE_ROOT_LENGTH, MAX_FLAG_DETAIL_LENGTH, MAX_SIDE_EFFECTS, MAX_FILE_TARGETS, MAX_WORKSPACE_ROOTS, MAX_FLAG_DETAILS, MAX_CANONICAL_ACTION_BYTES } from '../config.js';
+import { OPERATION_KINDS, REVERSIBILITY_VALUES, USER_AUTHORIZATION_VALUES, ACTION_KEYS, FLAG_KEYS, REVIEWER_INSTRUCTIONS } from './contracts.js';
 
-export function isPlainObject(value) {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function pushUnknownKeys(value, allowedKeys, prefix, errors) {
+function pushUnknownKeys(value: Record<string, unknown>, allowedKeys: ReadonlySet<string>, prefix: string, errors: string[]) {
   for (const key of Object.keys(value)) {
     if (!allowedKeys.has(key)) errors.push(`${prefix} contains unsupported field '${redactSecrets(key)}'.`);
   }
 }
 
-function validateString(value, field, maxLength, errors) {
+function validateString(value: unknown, field: string, maxLength: number, errors: string[]): string | null {
   if (typeof value !== "string") {
     errors.push(`${field} must be a string.`);
     return null;
@@ -26,7 +27,7 @@ function validateString(value, field, maxLength, errors) {
   return value;
 }
 
-function validateStringArray(value, field, maxItems, itemMaxLength, errors) {
+function validateStringArray(value: unknown, field: string, maxItems: number, itemMaxLength: number, errors: string[]): string[] {
   if (!Array.isArray(value)) {
     errors.push(`${field} must be an array.`);
     return [];
@@ -40,7 +41,7 @@ function validateStringArray(value, field, maxItems, itemMaxLength, errors) {
   return normalized;
 }
 
-function normalizeFlag(value, field, detailKey, errors) {
+function normalizeFlag(value: unknown, field: string, detailKey: string, errors: string[]): ActionFlag {
   if (typeof value === "boolean") return { involved: value, details: [] };
   if (!isPlainObject(value)) {
     errors.push(`${field} must be a boolean or an object.`);
@@ -64,44 +65,44 @@ function normalizeFlag(value, field, detailKey, errors) {
   return { involved: value.involved === true, details };
 }
 
-export function boundedText(value, maxLength) {
+export function boundedText(value: string, maxLength: number) {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, Math.max(0, maxLength - 14))}...[truncated]`;
 }
 
 const SAFE_SECRET_PLACEHOLDER = /^(?:\[?redacted(?:_[a-z]+)?\]?|<redacted>|\*{3,}|x{3,}|\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Z_][A-Z0-9_]*%|(?:vault|secret[- ]?store|keychain|credential[- ]?store))$/iu;
 
-function isSecretPlaceholder(value) {
+function isSecretPlaceholder(value: string) {
   return SAFE_SECRET_PLACEHOLDER.test(value.trim());
 }
 
-function redactAssignmentValues(text) {
+function redactAssignmentValues(text: string) {
   return text.replace(
     /((?:^|[\s;&|])(?:export\s+)?(?:(?:[A-Za-z_][A-Za-z0-9_]*?(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH))|(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH))\s*=\s*)(["'][^"']*["']|[^\s,;&|]+)/giu,
-    (match, prefix, value) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
+    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
   );
 }
 
-function redactLabeledSecrets(text) {
+function redactLabeledSecrets(text: string) {
   return text.replace(
     /((?:api[\s_-]*key|access[\s_-]*token|refresh[\s_-]*token|client[\s_-]*secret|authorization|password|passwd|secret|private[\s_-]*key|credential|cookie|session[\s_-]*token)\s*(?:=|:)\s*)(["'][^"']*["']|[^\s,;&|]+)/giu,
-    (match, prefix, value) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
+    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value.replace(/^['"]|['"]$/gu, "")) ? value : "[REDACTED]"}`,
   );
 }
 
-function redactCurlAuth(text) {
+function redactCurlAuth(text: string) {
   let redacted = text.replace(
     /((?:\bcurl\b[^\n]{0,500}?\s)(?:--user|-u)\s+)([^\s]+)/giu,
-    (match, prefix, value) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_CURL_AUTH]"}`,
+    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_CURL_AUTH]"}`,
   );
   redacted = redacted.replace(
     /([?&](?:signature|sig|token|api[\s_-]*key|access[\s_-]*token|auth(?:orization)?)=)([^&\s]+)/giu,
-    (match, prefix, value) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_QUERY_SECRET]"}`,
+    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED_QUERY_SECRET]"}`,
   );
   return redacted;
 }
 
-export function redactSecrets(value) {
+export function redactSecrets(value: unknown): string {
   let redacted = String(value);
   redacted = redacted.replace(
     /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/giu,
@@ -118,7 +119,7 @@ export function redactSecrets(value) {
   redacted = redactLabeledSecrets(redacted);
   redacted = redacted.replace(
     /((?:^|\s)--(?:api-key|access-token|refresh-token|token|password|secret)(?:=|\s+))([^\s]+)/giu,
-    (match, prefix, value) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED]"}`,
+    (match: string, prefix: string, value: string) => `${prefix}${isSecretPlaceholder(value) ? value : "[REDACTED]"}`,
   );
   redacted = redactCurlAuth(redacted);
   redacted = redacted.replace(
@@ -131,15 +132,15 @@ export function redactSecrets(value) {
   );
   redacted = redacted.replace(
     /\b[A-Za-z0-9_-]{24,}\b/gu,
-    (match, offset, fullText) => {
+    (match: string, offset: number, fullText: string) => {
       if (/^REDACTED(?:_|$)/iu.test(match) || isSecretPlaceholder(match)) return match;
       // Avoid treating ordinary long hyphenated/underscored labels as opaque
       // credentials unless they also carry a numeric token character.
       if (!/\d/u.test(match) && /[_-]/u.test(match)) return match;
       let start = offset;
-      while (start > 0 && !/[\s,;&|]/u.test(fullText[start - 1])) start -= 1;
+      while (start > 0 && !/[\s,;&|]/u.test(fullText[start - 1]!)) start -= 1;
       let end = offset + match.length;
-      while (end < fullText.length && !/[\s,;&|]/u.test(fullText[end])) end += 1;
+      while (end < fullText.length && !/[\s,;&|]/u.test(fullText[end]!)) end += 1;
       // Long path components are not opaque credentials; dedicated URL/query
       // and assignment rules above still redact credential-bearing paths.
       return /[\\/]/u.test(fullText.slice(start, end)) ? match : "[REDACTED_OPAQUE_CREDENTIAL]";
@@ -152,7 +153,7 @@ export function redactSecrets(value) {
   return redacted;
 }
 
-function containsSecretMaterial(value) {
+function containsSecretMaterial(value: unknown) {
   if (typeof value !== "string") return false;
   const reviewableValue = /\bgit\s+push\b/iu.test(value)
     ? value.replace(
@@ -168,13 +169,13 @@ function containsSecretMaterial(value) {
  * @param {unknown} rawAction
  * @returns {{ok: true, value: object} | {ok: false, errors: string[]}}
  */
-export function validateProposedAction(rawAction) {
-  const errors = [];
+export function validateProposedAction(rawAction: unknown): Validation<NormalizedAction> {
+  const errors: string[] = [];
   if (!isPlainObject(rawAction)) return { ok: false, errors: ["arguments must be a JSON object."] };
   pushUnknownKeys(rawAction, ACTION_KEYS, "arguments", errors);
 
   const operationKind = validateString(rawAction.operationKind, "operationKind", MAX_OPERATION_KIND_LENGTH, errors);
-  if (operationKind !== null && !OPERATION_KINDS.includes(operationKind)) {
+  if (operationKind !== null && !OPERATION_KINDS.includes(operationKind ?? "")) {
     errors.push(`operationKind must be one of: ${OPERATION_KINDS.join(", ")}.`);
   }
   const workspaceRoots = validateStringArray(
@@ -208,10 +209,10 @@ export function validateProposedAction(rawAction) {
   for (const [index, root] of workspaceRoots.entries()) {
     if (!isAbsolute(root)) errors.push(`workspaceRoots[${index}] must be an absolute path.`);
   }
-  if (["file_read", "file_write", "file_delete", "file_move"].includes(operationKind) && fileTargets.length === 0) {
+  if (["file_read", "file_write", "file_delete", "file_move"].includes(operationKind ?? "") && fileTargets.length === 0) {
     errors.push(`operationKind=${operationKind} requires fileTargets.`);
   }
-  if (["file_read", "file_write", "file_delete", "file_move"].includes(operationKind) && command) {
+  if (["file_read", "file_write", "file_delete", "file_move"].includes(operationKind ?? "") && command) {
     errors.push(`operationKind=${operationKind} must use fileTargets, not a command.`);
   }
 
@@ -236,16 +237,17 @@ export function validateProposedAction(rawAction) {
   }
   if (errors.length > 0) return { ok: false, errors };
 
-  const normalizedAction = {
-    operationKind,
+  if (operationKind === null || cwd === null || reason === null || reversibility === null || userAuthorization === null) return { ok: false, errors };
+  const normalizedAction: NormalizedAction = {
+    operationKind: operationKind as OperationKind,
     ...(command ? { command } : {}),
     ...(fileTargets.length > 0 ? { fileTargets } : {}),
     workspaceRoots,
     cwd,
     reason,
     sideEffects,
-    reversibility,
-    userAuthorization,
+    reversibility: reversibility as Reversibility,
+    userAuthorization: userAuthorization as UserAuthorization,
     network,
     externalSystem,
     sensitiveData,
@@ -265,7 +267,7 @@ export class ReviewerPromptSizeError extends Error {
   }
 }
 
-export function buildReviewerPromptFromValidated(action) {
+export function buildReviewerPromptFromValidated(action: NormalizedAction) {
   // Full validated scope must reach the model. Silent truncation can hide a
   // command suffix, target or side effect while the digest still covers it.
   const prompt = `${REVIEWER_INSTRUCTIONS}\n\nPROPOSED ACTION METADATA (UNTRUSTED DATA):\n${JSON.stringify(action, (_key, value) => typeof value === "string" ? redactSecrets(value) : value)}`;
@@ -278,13 +280,13 @@ export function buildReviewerPromptFromValidated(action) {
  * @param {unknown} rawAction
  * @returns {string}
  */
-export function buildReviewerPrompt(rawAction) {
+export function buildReviewerPrompt(rawAction: unknown) {
   const validation = validateProposedAction(rawAction);
   if (!validation.ok) throw new Error(`Cannot build a review prompt: ${validation.errors.join(" ")}`);
   return buildReviewerPromptFromValidated(validation.value);
 }
 
-export function canonicalActionJson(action) {
+export function canonicalActionJson(action: NormalizedAction) {
   const canonical = {
     operationKind: action.operationKind,
     command: action.command ?? null,
@@ -304,18 +306,27 @@ export function canonicalActionJson(action) {
   return json;
 }
 
-export function isCanonicalAction(action) {
-  return isPlainObject(action) &&
-    typeof action.operationKind === "string" &&
-    Array.isArray(action.workspaceRoots) &&
-    typeof action.cwd === "string" &&
-    USER_AUTHORIZATION_VALUES.includes(action.userAuthorization) &&
-    isPlainObject(action.network) && Array.isArray(action.network.details) &&
-    isPlainObject(action.externalSystem) && Array.isArray(action.externalSystem.details) &&
-    isPlainObject(action.sensitiveData) && Array.isArray(action.sensitiveData.details);
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === "string");
 }
 
-export function normalizeActionForReview(action) {
+function isActionFlag(value: unknown): value is ActionFlag {
+  return isPlainObject(value) && typeof value.involved === "boolean" && isStringArray(value.details);
+}
+
+export function isCanonicalAction(action: unknown): action is NormalizedAction {
+  return isPlainObject(action) &&
+    typeof action.operationKind === "string" && OPERATION_KINDS.includes(action.operationKind) &&
+    isStringArray(action.workspaceRoots) && typeof action.cwd === "string" &&
+    typeof action.reason === "string" && isStringArray(action.sideEffects) &&
+    (action.command === undefined || typeof action.command === "string") &&
+    (action.fileTargets === undefined || isStringArray(action.fileTargets)) &&
+    typeof action.reversibility === "string" && REVERSIBILITY_VALUES.includes(action.reversibility) &&
+    typeof action.userAuthorization === "string" && USER_AUTHORIZATION_VALUES.includes(action.userAuthorization) &&
+    isActionFlag(action.network) && isActionFlag(action.externalSystem) && isActionFlag(action.sensitiveData);
+}
+
+export function normalizeActionForReview(action: unknown): NormalizedAction | null {
   if (isCanonicalAction(action)) {
     const wireAction = {
       ...action,
@@ -330,7 +341,7 @@ export function normalizeActionForReview(action) {
   return validation.ok ? validation.value : null;
 }
 
-export function actionSha256(action) {
+export function actionSha256(action: NormalizedAction) {
   return createHash("sha256").update(canonicalActionJson(action), "utf8").digest("hex");
 }
 

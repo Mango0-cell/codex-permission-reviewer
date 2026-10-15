@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
-import { readBoundedLines } from '../src/transport/mcp.mjs';
-import { buildMinimalChildEnvironment, appServerConfigText, buildAppServerRequests } from '../src/runtime/app-server-client.mjs';
+import { readBoundedLines } from '../src/transport/mcp.js';
+import { buildMinimalChildEnvironment, appServerConfigText, buildAppServerRequests } from '../src/runtime/app-server-client.js';
 
 test('MCP rejects pre-initialize tool access and negotiates protocol through stable launcher', async () => {
   const child = spawn(process.execPath, ['scripts/server.mjs'], { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -15,7 +15,7 @@ test('MCP rejects pre-initialize tool access and negotiates protocol through sta
     { jsonrpc: '2.0', id: 2, method: 'initialize', params: { protocolVersion: '2025-06-18' } },
     { jsonrpc: '2.0', id: 3, method: 'tools/list' },
     { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'review_sensitive_action', arguments: {} } },
-  ].map(JSON.stringify).join('\n') + '\n');
+  ].map(value => JSON.stringify(value)).join('\n') + '\n');
   assert.equal(await closed, 0, stderr);
   const replies = new Map(stdout.trim().split('\n').map(line => { const value = JSON.parse(line); return [value.id, value]; }));
   assert.equal(replies.get(1).error.code, -32002);
@@ -27,7 +27,7 @@ test('MCP rejects pre-initialize tool access and negotiates protocol through sta
 test('stream bounds recover after oversized chunks and preserve split UTF-8', async () => {
   async function* chunks() { yield Buffer.from('abcde'); yield Buffer.from('f\nok\r\n'); yield Buffer.from([0xc3]); yield Buffer.from([0xa9, 0x0a]); }
   const result = [];
-  for await (const item of readBoundedLines(chunks(), 5)) result.push(item.oversized ? 'oversized' : item.line.toString());
+  for await (const item of readBoundedLines(chunks(), 5)) result.push(item.oversized ? 'oversized' : item.line!.toString());
   assert.deepEqual(result, ['oversized', 'ok', 'é']);
 });
 

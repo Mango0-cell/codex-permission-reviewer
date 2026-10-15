@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import type { SpawnSyncOptions } from "node:child_process";
 
 import { spawnSync } from "node:child_process";
 import { chmod, copyFile, mkdir, readFile } from "node:fs/promises";
@@ -15,7 +16,7 @@ const EFFORT_ENV = "CODEX_PERMISSION_REVIEW_EFFORT";
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const DEFAULT_EFFORT = "max";
 
-function run(command, args, options = {}) {
+function run(command: string, args: string[], options: SpawnSyncOptions = {}) {
   const result = spawnSync(command, args, {
     stdio: "inherit",
     env: process.env,
@@ -34,14 +35,14 @@ function codexHome() {
   return join(homedir(), ".codex");
 }
 
-async function installSkill(force) {
-  const source = fileURLToPath(new URL("../skills/sensitive-permission-review/SKILL.md", import.meta.url));
+async function installSkill(force: boolean) {
+  const source = fileURLToPath(new URL("../../skills/sensitive-permission-review/SKILL.md", import.meta.url));
   const destination = join(codexHome(), "skills", "sensitive-permission-review", "SKILL.md");
   let existing = null;
   try {
     existing = await readFile(destination, "utf8");
   } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
+    if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
   }
   const bundled = await readFile(source, "utf8");
   if (existing !== null && existing !== bundled && !force) {
@@ -85,7 +86,7 @@ async function install() {
 }
 
 function runMcp() {
-  const server = fileURLToPath(new URL("../scripts/server.mjs", import.meta.url));
+  const server = fileURLToPath(new URL("../scripts/server.js", import.meta.url));
   process.exitCode = run(process.execPath, [server]);
 }
 

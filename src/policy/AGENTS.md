@@ -8,3 +8,7 @@ When a model allow is missing user authorization, distinguish an exact eligible
 action that needs confirmation from a non-overridable hazard. Eligible actions
 return needs_user and require fresh explicit review; actual model denials and
 deterministic blockers stay effective.
+
+Maintain implementation and tests as strict TypeScript. Use type-only imports for
+contracts, validate untrusted values from unknown, and keep built JavaScript in
+dist/ or generated compatibility launchers. See docs/typescript.md at repo root.

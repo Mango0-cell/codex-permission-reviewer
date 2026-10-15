@@ -8,3 +8,7 @@ Reviewer prompts carry the full validated scope, with redaction, within the
 fixed prompt limit. Never silently drop command suffixes, targets, flags or side
 effects to fit a prompt. Oversized complete scope requires a narrower request.
 Only the host constructs availability/retry metadata; model output cannot add it.
+
+Maintain implementation and tests as strict TypeScript. Use type-only imports for
+contracts, validate untrusted values from unknown, and keep built JavaScript in
+dist/ or generated compatibility launchers. See docs/typescript.md at repo root.

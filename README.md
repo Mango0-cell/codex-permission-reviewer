@@ -164,12 +164,17 @@ requires a narrower request rather than silently truncating evidence.
 
 ## Development and architecture
 
-Runtime code is organized into action, policy, approvals, review, runtime, and
-transport domains under `src/`. The existing `scripts/` paths remain stable
+Strict TypeScript source is organized into action, policy, approvals, review,
+runtime, and transport domains under `src/`. The existing `scripts/` paths remain stable
 launchers and compatibility imports. Each maintained directory has an
 `AGENTS.md` specification. See [the architecture and review notes](docs/architecture.md)
 for dependency boundaries, decision flow, and classifier limitations.
 
-Run `npm run check`, `npm test`, and `npm pack --dry-run` before submitting
-changes. Tests use fixture strings, temporary files, and trusted fake reviewer
+Run `npm ci`, `npm run check`, `npm test`, and `npm run test:package` before
+submitting changes. Tests use fixture strings, temporary files, and trusted fake reviewer
 adapters; they do not execute proposed commands or require managed auth.
+
+See [the TypeScript build and install contract](docs/typescript.md). Maintainers
+compile source once during build/pack; installed users run prebuilt JavaScript
+without a TypeScript compiler or transpilation loader. Existing `.mjs` launcher
+paths are generated compatibility shims, not separately maintained source.

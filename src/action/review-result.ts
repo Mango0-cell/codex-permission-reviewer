@@ -1,15 +1,16 @@
-import { MAX_OUTPUT_BYTES, REVIEW_TTL_MS, MAX_OUTPUT_RATIONALE_LENGTH, MAX_OUTPUT_HAZARDS, MAX_OUTPUT_HAZARD_LENGTH, MAX_OUTPUT_ALTERNATIVE_LENGTH } from '../config.mjs';
-import { OUTPUT_KEYS, OUTPUT_VERDICTS, OUTPUT_RISK_LEVELS } from './contracts.mjs';
-import { isPlainObject, boundedText, redactSecrets, actionSha256 } from './metadata.mjs';
+import type { NormalizedAction, Review, ReviewResult } from "./types.js";
+import { MAX_OUTPUT_BYTES, REVIEW_TTL_MS, MAX_OUTPUT_RATIONALE_LENGTH, MAX_OUTPUT_HAZARDS, MAX_OUTPUT_HAZARD_LENGTH, MAX_OUTPUT_ALTERNATIVE_LENGTH } from '../config.js';
+import { OUTPUT_KEYS, OUTPUT_VERDICTS, OUTPUT_RISK_LEVELS } from './contracts.js';
+import { isPlainObject, boundedText, redactSecrets, actionSha256 } from './metadata.js';
 
-function sanitizeReviewText(value, maxLength, fallback = "") {
+function sanitizeReviewText(value: unknown, maxLength: number, fallback = "") {
   const text = typeof value === "string" ? value : fallback;
   return boundedText(redactSecrets(text.trim()), maxLength);
 }
 
-export function sanitizeReviewOutput(review) {
-  const verdict = OUTPUT_VERDICTS.has(review?.verdict) ? review.verdict : "deny";
-  const riskLevel = OUTPUT_RISK_LEVELS.has(review?.riskLevel) ? review.riskLevel : "critical";
+export function sanitizeReviewOutput(review: Partial<Review> | null | undefined): Review {
+  const verdict = review?.verdict && OUTPUT_VERDICTS.has(review.verdict) ? review.verdict : "deny";
+  const riskLevel = review?.riskLevel && OUTPUT_RISK_LEVELS.has(review.riskLevel) ? review.riskLevel : "critical";
   const rawHazards = Array.isArray(review?.detectedHazards) ? review.detectedHazards : [];
   const detectedHazards = rawHazards
     .filter((hazard) => typeof hazard === "string")
@@ -25,7 +26,7 @@ export function sanitizeReviewOutput(review) {
   };
 }
 
-export function decorateReview(review, action = null, reviewedAt = new Date()) {
+export function decorateReview(review: Review, action: NormalizedAction | null = null, reviewedAt = new Date()): ReviewResult {
   const safeReviewedAt = reviewedAt instanceof Date && !Number.isNaN(reviewedAt.valueOf()) ? reviewedAt : new Date();
   let digest = null;
   if (action !== null) {
@@ -43,7 +44,7 @@ export function decorateReview(review, action = null, reviewedAt = new Date()) {
   };
 }
 
-export function outputFailure(_reason, hazard = "reviewer_unavailable", action = null) {
+export function outputFailure(_reason: string, hazard = "reviewer_unavailable", action: NormalizedAction | null = null): ReviewResult {
   return decorateReview({
     verdict: "deny",
     riskLevel: "critical",
@@ -55,8 +56,8 @@ export function outputFailure(_reason, hazard = "reviewer_unavailable", action =
 
 // Availability is not a completed policy decision. Never turn an outage into
 // an approval, and do not tell callers a transport failure is a model denial.
-export function reviewerUnavailable(hazard, action, retryAfterMs = null) {
-  const retryable = Number.isFinite(retryAfterMs) && retryAfterMs >= 0;
+export function reviewerUnavailable(hazard: string, action: NormalizedAction, retryAfterMs: number | null = null): ReviewResult {
+  const retryable = typeof retryAfterMs === "number" && Number.isFinite(retryAfterMs) && retryAfterMs >= 0;
   return {
     ...decorateReview({
       verdict: "needs_user",
@@ -79,12 +80,12 @@ export function reviewerUnavailable(hazard, action, retryAfterMs = null) {
  * @param {unknown} stdout
  * @returns {{ok: true, value: object} | {ok: false, error: string}}
  */
-export function parseReviewerOutput(stdout) {
+export function parseReviewerOutput(stdout: unknown): { ok: true; value: Review } | { ok: false; error: string } {
   if (typeof stdout !== "string") return { ok: false, error: "reviewer output was not text" };
   if (Buffer.byteLength(stdout, "utf8") > MAX_OUTPUT_BYTES) return { ok: false, error: "reviewer output exceeded the size limit" };
   const trimmed = stdout.trim();
   if (!trimmed) return { ok: false, error: "reviewer output was empty" };
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
   } catch {
@@ -94,8 +95,8 @@ export function parseReviewerOutput(stdout) {
   for (const key of Object.keys(parsed)) {
     if (!OUTPUT_KEYS.has(key)) return { ok: false, error: "reviewer output contains unsupported fields" };
   }
-  if (!OUTPUT_VERDICTS.has(parsed.verdict)) return { ok: false, error: "reviewer output has an invalid verdict" };
-  if (!OUTPUT_RISK_LEVELS.has(parsed.riskLevel)) return { ok: false, error: "reviewer output has an invalid risk level" };
+  if (typeof parsed.verdict !== "string" || !OUTPUT_VERDICTS.has(parsed.verdict)) return { ok: false, error: "reviewer output has an invalid verdict" };
+  if (typeof parsed.riskLevel !== "string" || !OUTPUT_RISK_LEVELS.has(parsed.riskLevel)) return { ok: false, error: "reviewer output has an invalid risk level" };
   if (typeof parsed.rationale !== "string" || parsed.rationale.trim().length === 0 || parsed.rationale.length > MAX_OUTPUT_RATIONALE_LENGTH) {
     return { ok: false, error: "reviewer rationale was missing or too long" };
   }
@@ -113,8 +114,8 @@ export function parseReviewerOutput(stdout) {
   return {
     ok: true,
     value: {
-      verdict: parsed.verdict,
-      riskLevel: parsed.riskLevel,
+      verdict: parsed.verdict as Review["verdict"],
+      riskLevel: parsed.riskLevel as Review["riskLevel"],
       rationale: redactSecrets(parsed.rationale),
       detectedHazards: parsed.detectedHazards.map((hazard) => redactSecrets(hazard)),
       saferAlternative: redactSecrets(parsed.saferAlternative),

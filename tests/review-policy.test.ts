@@ -3,10 +3,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createReviewService } from '../src/review/service.mjs';
-import { validateProposedAction } from '../src/action/metadata.mjs';
-import { learnedApprovalBlockers } from '../src/policy/policy.mjs';
-import { action, allow } from './helpers.mjs';
+import { createReviewService } from '../src/review/service.js';
+import { validateProposedAction } from '../src/action/metadata.js';
+import { learnedApprovalBlockers } from '../src/policy/policy.js';
+import { action, allow } from './helpers.js';
 
 for (const verdict of ['allow', 'deny', 'needs_user']) {
   test(`explicit authorization preserves model ${verdict}`, async () => {
@@ -15,7 +15,7 @@ for (const verdict of ['allow', 'deny', 'needs_user']) {
     const result = await service.runPermissionReviewer(action());
     assert.equal(result.verdict, verdict);
     assert.equal(calls, 1);
-    assert.match(result.actionSha256, /^[a-f0-9]{64}$/u);
+    assert.match(result.actionSha256!, /^[a-f0-9]{64}$/u);
   });
 }
 for (const command of ['rm -fr /tmp/example', 'rm --recursive --force /tmp/example', 'git push -f', 'DELETE FROM leads']) {
@@ -75,6 +75,7 @@ test('rolling budget returns retry timing without launching extra reviewers', as
   assert.ok(limited.detectedHazards.includes('reviewer_rate_limited'));
   assert.equal(limited.reviewStatus, 'unavailable');
   assert.equal(limited.retryable, true);
+  assert.ok(limited.retryAfterMs !== undefined);
   assert.ok(limited.retryAfterMs > 0 && limited.retryAfterMs <= 60_000);
   assert.equal(calls, 5);
 });
@@ -88,7 +89,7 @@ test('learned approvals store hashes only, match exact scope, and respect cancel
     const request = action();
     assert.equal((await service.reviewSensitiveAction(request)).verdict, 'allow');
     const raw = await readFile(join(home, 'plugin-state/codex-permission-reviewer/learned-approvals.json'), 'utf8');
-    assert.ok(!raw.includes(request.command));
+    assert.ok(!raw.includes(request.command!));
     assert.ok(!raw.includes(request.reason));
     assert.match(JSON.parse(raw).approvals[0].digest, /^[a-f0-9]{64}$/u);
     assert.equal((await service.reviewSensitiveAction({ ...request, userAuthorization: 'none' })).verdict, 'allow');

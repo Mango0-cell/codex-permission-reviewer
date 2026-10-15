@@ -3,12 +3,12 @@ import { execFileSync } from 'node:child_process';
 import { readdir, readFile, access } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import test from 'node:test';
-import * as legacy from '../scripts/server.mjs';
-import * as legacyClient from '../scripts/app-server-client.mjs';
-import * as client from '../src/runtime/app-server-client.mjs';
-import { reviewSensitiveAction } from '../src/review/service.mjs';
+import * as legacy from '../scripts/server.js';
+import * as legacyClient from '../scripts/app-server-client.js';
+import * as client from '../src/runtime/app-server-client.js';
+import { reviewSensitiveAction } from '../src/review/service.js';
 
-async function files(directory) {
+async function files(directory: string): Promise<string[]> {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = `${directory}/${entry.name}`;
@@ -18,29 +18,29 @@ async function files(directory) {
 }
 
 test('runtime domain dependencies are acyclic and stay inside declared boundaries', async () => {
-  const allowed = {
-    config: ['runtime/config.mjs'], action: ['config', 'action'],
+  const allowed: Record<string, string[]> = {
+    config: ['runtime/config.ts'], action: ['config', 'action'],
     approvals: ['config', 'action'], policy: ['config', 'action', 'policy'],
     review: ['config', 'action', 'approvals', 'policy', 'review', 'runtime'],
     runtime: ['runtime'], transport: ['config', 'action', 'review', 'transport'],
   };
-  const graph = new Map();
-  for (const path of (await files('src')).filter(path => path.endsWith('.mjs'))) {
-    const domain = path === 'src/config.mjs' ? 'config' : path.split('/')[1];
-    const imports = [...(await readFile(path, 'utf8')).matchAll(/(?:from\s+|import\s*)["']([^"']+)["']/gu)].map(match => match[1]);
+  const graph = new Map<string, string[]>();
+  for (const path of (await files('src')).filter(path => path.endsWith('.ts'))) {
+    const domain = path === 'src/config.ts' ? 'config' : path.split('/')[1]!;
+    const imports = [...(await readFile(path, 'utf8')).matchAll(/(?:from\s+|import\s*)["']([^"']+)["']/gu)].map(match => match[1]!);
     const edges = [];
     for (const specifier of imports) {
       if (specifier.startsWith('node:')) continue;
       assert.ok(specifier.startsWith('.'), `${path}: unexpected external dependency ${specifier}`);
-      const target = relative(process.cwd(), resolve(dirname(path), specifier));
-      const targetDomain = target === 'src/config.mjs' ? 'config' : target.split('/')[1];
-      assert.ok(allowed[domain].includes(targetDomain) || (domain === 'config' && target === 'src/runtime/config.mjs'), `${path} cannot depend on ${target}`);
+      const target = relative(process.cwd(), resolve(dirname(path), specifier)).replace(/\.js$/u, '.ts');
+      const targetDomain = target === 'src/config.ts' ? 'config' : target.split('/')[1]!;
+      assert.ok(allowed[domain]!.includes(targetDomain) || (domain === 'config' && target === 'src/runtime/config.ts'), `${path} cannot depend on ${target}`);
       edges.push(target);
     }
     graph.set(path, edges);
   }
-  const visiting = new Set(), visited = new Set();
-  function visit(path) {
+  const visiting = new Set<string>(), visited = new Set<string>();
+  function visit(path: string) {
     assert.ok(!visiting.has(path), `cyclic dependency at ${path}`);
     if (visited.has(path)) return;
     visiting.add(path);
@@ -65,10 +65,24 @@ test('legacy launcher exports remain available and point to production implement
   assert.deepEqual(legacyClient, client);
 });
 
-test('npm distribution contains every runtime module and stable launcher', async () => {
-  const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { encoding: 'utf8' }));
+test('npm distribution contains built modules, declarations and generated compatibility launchers', async () => {
+  const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { encoding: 'utf8' })) as [{ files: { path: string }[] }];
   const paths = new Set(pack.files.map(file => file.path));
-  for (const path of (await files('src')).filter(path => path.endsWith('.mjs'))) assert.ok(paths.has(path), `missing packaged module ${path}`);
+  for (const path of (await files('src')).filter(path => path.endsWith('.ts'))) {
+    const emitted = `dist/${path.replace(/\.ts$/u, '.js')}`;
+    assert.ok(paths.has(emitted), `missing packaged runtime ${emitted}`);
+    assert.ok(paths.has(emitted.replace(/\.js$/u, '.d.ts')), `missing declarations ${emitted}`);
+  }
   for (const path of ['scripts/server.mjs', 'scripts/app-server-client.mjs', 'bin/cli.mjs', 'skills/sensitive-permission-review/SKILL.md', '.mcp.json', '.codex-plugin/plugin.json']) assert.ok(paths.has(path), `missing entrypoint ${path}`);
-  assert.ok(![...paths].some(path => path.startsWith('graphify-out/')));
+  assert.ok(![...paths].some(path => path.startsWith('graphify-out/') || path.startsWith('dist/tests/')));
+  assert.ok(![...paths].some(path => /^(src|tests|bin|scripts)\/.*\.ts$/u.test(path)));
+});
+
+test('maintained source uses TypeScript and JavaScript launchers are generated', async () => {
+  for (const directory of ['src', 'tests']) {
+    assert.ok(!(await files(directory)).some(path => /\.(?:mjs|cjs|js)$/u.test(path)));
+  }
+  for (const path of ['bin/cli.mjs', 'scripts/server.mjs', 'scripts/app-server-client.mjs']) {
+    assert.match(await readFile(path, 'utf8'), /Generated by the TypeScript build/u);
+  }
 });

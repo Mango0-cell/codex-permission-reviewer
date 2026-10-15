@@ -9,9 +9,12 @@
   "files": [
     ".codex-plugin/",
     ".mcp.json",
-    "bin/",
-    "scripts/",
-    "src/",
+    "bin/cli.mjs",
+    "scripts/server.mjs",
+    "scripts/app-server-client.mjs",
+    "dist/bin/",
+    "dist/scripts/",
+    "dist/src/",
     "skills/",
     "LICENSE",
     "README.md",
@@ -42,7 +45,17 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test",
-    "check": "node scripts/check.mjs"
-  }
+    "build": "npm run clean && tsc -p tsconfig.json && node dist/scripts/package-assets.js",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "prepare": "npm run build",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "test:package": "node dist/scripts/verify-package.js"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "typescript": "7.0.2"
+  },
+  "main": "./dist/scripts/server.js",
+  "types": "./dist/scripts/server.d.ts"
 }

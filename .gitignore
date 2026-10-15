@@ -22,3 +22,8 @@ tmp/
 # Local architecture analysis
 graphify-out/
 .graphify_cache/
+
+# Generated compatibility launchers; maintained source is TypeScript.
+/bin/cli.mjs
+/scripts/server.mjs
+/scripts/app-server-client.mjs

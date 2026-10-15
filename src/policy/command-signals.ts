@@ -3,16 +3,16 @@
 // A match only blocks approval; absence of a match never grants permission.
 const SEPARATOR = /^[;|&()<>\n]$/u;
 
-function words(text) {
+function words(text: string): string[] {
   const result = [];
   let word = "";
   let quote = null;
   const flush = () => { if (word) result.push(word); word = ""; };
   for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
+    const char = text[i]!;
     if (char === "\\" && quote !== "'" && i + 1 < text.length) {
       if (text[i + 1] === "\n") { i += 1; continue; }
-      word += text[++i];
+      word += text[++i]!;
     } else if (quote) {
       if (char === quote) quote = null;
       else word += char;
@@ -30,7 +30,7 @@ function words(text) {
   return result;
 }
 
-function recursiveRemoval(args) {
+function recursiveRemoval(args: string[]) {
   // Options belong to rm only until --. Never take r/f from
   // filenames, a later command, or another program's --rm option.
   for (const arg of args) {
@@ -41,11 +41,11 @@ function recursiveRemoval(args) {
   return false;
 }
 
-function destructiveGit(args) {
+function destructiveGit(args: string[]) {
   // Skip global options with values before looking for a subcommand.
   let i = 0;
-  while (i < args.length && args[i].startsWith("-")) {
-    if (["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"].includes(args[i])) i += 1;
+  while (i < args.length && args[i]!.startsWith("-")) {
+    if (["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"].includes(args[i]!)) i += 1;
     i += 1;
   }
   const command = args[i++];
@@ -57,7 +57,7 @@ function destructiveGit(args) {
   return command === "restore" && args.length > i;
 }
 
-function broadSql(text) {
+function broadSql(text: string) {
   // Ignore WHERE inside literals and comments, and keep its scope local to
   // the SQL statement. This is conservative signal matching, not SQL parsing.
   const sql = text.replace(/--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"/gu, " ");
@@ -66,23 +66,23 @@ function broadSql(text) {
     (/\b(?:delete\s+from\s+\S+|update\s+\S+\s+set\b)/iu.test(statement) && !/\bwhere\b/iu.test(statement)));
 }
 
-export function hasNonOverridableCommandSignal(command, depth = 0) {
+export function hasNonOverridableCommandSignal(command: unknown, depth = 0): boolean {
   if (typeof command !== "string" || command.length > 12_000) return true;
   if (/\b(?:authorization|permission|credential|secret)\s+bypass\b/iu.test(command) || broadSql(command)) return true;
   const tokens = words(command);
   for (let i = 0; i < tokens.length; i += 1) {
-    const token = tokens[i];
+    const token = tokens[i]!;
     if (SEPARATOR.test(token)) continue;
     const name = token.slice(token.lastIndexOf("/") + 1);
     let end = i + 1;
-    while (end < tokens.length && !SEPARATOR.test(tokens[end])) end += 1;
+    while (end < tokens.length && !SEPARATOR.test(tokens[end]!)) end += 1;
     const args = tokens.slice(i + 1, end);
     if (name === "rm" && recursiveRemoval(args)) return true;
     if (name === "git" && destructiveGit(args)) return true;
     if (["curl", "wget"].includes(name)) {
       let next = end;
-      while (next < tokens.length && SEPARATOR.test(tokens[next])) next += 1;
-      if (["sh", "bash", "zsh", "node", "python", "python3"].includes(tokens[next]?.split("/").at(-1))) return true;
+      while (next < tokens.length && SEPARATOR.test(tokens[next]!)) next += 1;
+      if (["sh", "bash", "zsh", "node", "python", "python3"].includes(tokens[next]?.split("/").at(-1) ?? "")) return true;
     }
     if (/[\s;|&]/u.test(token)) {
       // Bound nesting rather than treating deeply embedded executable text as safe.
