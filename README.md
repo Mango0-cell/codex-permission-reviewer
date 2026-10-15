@@ -148,3 +148,15 @@ fails closed on missing managed auth, malformed output, unexpected or embedded
 raw/turn tool items, model/profile mismatch, timeout, or child failure. It uses one
 in-flight review, a rolling limit of five child reviews per 60 seconds, and a
 64-entry five-minute sanitized digest cache.
+
+## Development and architecture
+
+Runtime code is organized into action, policy, approvals, review, runtime, and
+transport domains under `src/`. The existing `scripts/` paths remain stable
+launchers and compatibility imports. Each maintained directory has an
+`AGENTS.md` specification. See [the architecture and review notes](docs/architecture.md)
+for dependency boundaries, decision flow, and classifier limitations.
+
+Run `npm run check`, `npm test`, and `npm pack --dry-run` before submitting
+changes. Tests use fixture strings, temporary files, and trusted fake reviewer
+adapters; they do not execute proposed commands or require managed auth.

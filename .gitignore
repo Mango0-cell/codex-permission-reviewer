@@ -18,3 +18,7 @@ coverage/
 dist/
 tmp/
 *.log
+
+# Local architecture analysis
+graphify-out/
+.graphify_cache/
