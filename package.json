@@ -11,9 +11,12 @@
     ".mcp.json",
     "bin/",
     "scripts/",
+    "src/",
     "skills/",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "docs/",
+    "AGENTS.md"
   ],
   "engines": {
     "node": ">=20"
@@ -25,7 +28,7 @@
     "permissions",
     "security"
   ],
-  "author": "Adrián Gaitán <hello@adriangaitan.dev>",
+  "author": "Adri\u00e1n Gait\u00e1n <hello@adriangaitan.dev>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -37,5 +40,9 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check.mjs"
   }
 }
