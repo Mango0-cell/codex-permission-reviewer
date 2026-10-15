@@ -1,6 +1,7 @@
 ---
 paths:
   - "tests/**/*.mjs"
+  - "tests/**/*.ts"
 ---
 
 Read tests/AGENTS.md. Proposed commands remain inert strings. Use controlled

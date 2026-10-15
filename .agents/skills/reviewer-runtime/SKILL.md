@@ -10,6 +10,8 @@ same specifications through their CLAUDE.md import mirrors.
 Read [the shared expertise guide](../../../docs/maintainers/runtime.md) before changing
 this area. For navigation or cross-domain changes, use
 [the maintenance map](../../../docs/maintenance.md).
+Follow [the code-writing conventions](../../../docs/maintainers/engineering.md)
+when changing source.
 
 Locate the lifecycle owner and model the success, failure, saturation and cancellation paths. Use trusted adapters and controlled concurrency fixtures before changing runtime behavior.
 

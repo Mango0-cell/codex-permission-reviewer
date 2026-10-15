@@ -39,9 +39,13 @@ implied by a source refactor. Record behavior changes and limitations in docs.
 ## Engineering navigation and scope
 
 Read docs/maintenance.md for the domain map, design-pattern choices, and expertise
-routes. Repository skills under .agents/skills/ provide architecture, policy, and
-runtime/protocol maintenance guidance. Load the route relevant to the change.
-Keep architecture/rules-only changes separate from behavioral fixes and
-performance changes unless the user explicitly requests a combined PR. A useful
-new abstraction has a concrete owner, a stable contract, and a demonstrated need;
-prefer explicit module calls over introducing frameworks or event buses.
+routes. Read docs/maintainers/engineering.md when writing code. Repository skills
+under .agents/skills/ cover architecture, policy, runtime, commits, and GitHub PRs;
+load the route relevant to the task. For Git history and PR work, read
+docs/maintainers/commits.md and docs/maintainers/pull-requests.md. Keep
+architecture/rules-only changes separate from behavioral fixes and performance
+changes unless the user explicitly requests a combined PR. A useful new
+abstraction has a concrete owner, a stable contract, and a demonstrated need;
+prefer explicit module calls over introducing frameworks or event buses. When
+TypeScript is present in the active source scope, use strict types, validate
+external data from unknown, and avoid any.

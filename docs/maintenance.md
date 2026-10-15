@@ -18,6 +18,9 @@ context for a fresh review, not a replacement for the host's approval rules.
 | Change install or distribution | bin/cli.mjs, package.json, .mcp.json, .codex-plugin/ | Architecture guide plus the local AGENTS.md |
 | Change shipped instructions for agents using the plugin | skills/sensitive-permission-review/SKILL.md | Policy guide; keep usage aligned with real runtime behavior |
 | Change how agents maintain this repository | .agents/skills/, .claude/, CLAUDE.md, AGENTS.md | This guide and the relevant expertise guide |
+| Write or reshape source code | Owning src/ domain and its nearest AGENTS.md | [Code-writing conventions](maintainers/engineering.md), plus the domain guide |
+| Stage and commit a change | Current branch and working tree | [Commit conventions](maintainers/commits.md) |
+| Review, prepare, or update a GitHub PR | PR base/head and changed files | [PR workflow](maintainers/pull-requests.md) |
 
 For exact ownership and current behavior, consult [architecture.md](architecture.md).
 The guides explain engineering decisions; source, tests, and exported contracts

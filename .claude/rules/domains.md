@@ -1,8 +1,11 @@
 ---
 paths:
   - "src/**/*.mjs"
+  - "src/**/*.ts"
   - "scripts/**/*.mjs"
+  - "scripts/**/*.ts"
   - "bin/**/*.mjs"
+  - "bin/**/*.ts"
 ---
 
 Read the nearest domain AGENTS.md and docs/maintenance.md's relevant expertise

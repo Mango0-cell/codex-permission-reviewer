@@ -10,6 +10,8 @@ same specifications through their CLAUDE.md import mirrors.
 Read [the shared expertise guide](../../../docs/maintainers/architecture.md) before changing
 this area. For navigation or cross-domain changes, use
 [the maintenance map](../../../docs/maintenance.md).
+Follow [the code-writing conventions](../../../docs/maintainers/engineering.md)
+when changing source shape or types.
 
 Identify the trigger, owner, callers and observable contract before editing. Use the shared guide to choose a pattern only when the actual problem needs it. Keep behavior changes separate from architecture/rules-only work.
 

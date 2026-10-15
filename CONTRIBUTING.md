@@ -20,6 +20,14 @@ contracts and local functions; add new dependencies or infrastructure only for a
 concrete need. Every new domain/subfolder requires an AGENTS.md specifying its
 owner, dependencies, invariants and relevant validation.
 
+Follow [the code-writing conventions](docs/maintainers/engineering.md): keep
+side effects at explicit boundaries, validate untrusted inputs before use, give
+errors and resource lifetimes clear owners, and test observable behavior. In a
+TypeScript source scope, use strict types and narrow external data from `unknown`;
+do not introduce `any` as a shortcut. Use the source format declared by the active
+branch and do not maintain handwritten duplicates of generated compatibility
+files.
+
 ## Preserve the product's intent
 
 The plugin advises; it never executes proposed actions, grants host permission,
@@ -54,6 +62,16 @@ regression, not merely mirror a function's wording or private implementation.
 For skill/rule changes, verify frontmatter and all shared-guide/import paths, and
 walk a realistic navigation/change request through the relevant guide. Keep
 provider-specific entrypoints thin; the shared expertise belongs in docs/maintainers/.
+
+## Commits and GitHub PRs
+
+Use [the commit guide](docs/maintainers/commits.md) for focused staging and
+Conventional Commit messages. Use [the PR guide](docs/maintainers/pull-requests.md)
+to inspect the full changed path, review an exact PR head, prepare a description
+from the checked-in template, or respond to feedback. An issue link is useful when
+one exists, but is not required. Report the exact checks and PR head SHA that were
+verified. Posting a review or changing a PR requires the task to call for that
+GitHub action; never merge unless the task explicitly authorizes the merge.
 
 ## Submit and recover
 

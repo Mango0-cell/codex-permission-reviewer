@@ -10,6 +10,8 @@ same specifications through their CLAUDE.md import mirrors.
 Read [the shared expertise guide](../../../docs/maintainers/policy.md) before changing
 this area. For navigation or cross-domain changes, use
 [the maintenance map](../../../docs/maintenance.md).
+Follow [the code-writing conventions](../../../docs/maintainers/engineering.md)
+when changing source.
 
 Trace the affected decision through fresh, explicit, cached and learned paths. Preserve the human/model/deterministic/host boundaries and prove outcomes with inert fixtures and isolated state.
 
