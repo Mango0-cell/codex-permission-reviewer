@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { createReviewService } from '../src/review/service.mjs';
 import { validateProposedAction } from '../src/action/metadata.mjs';
-import { learnedApprovalBlockers } from '../src/policy/policy.mjs';
+import { explicitAuthorizationBlockers, learnedApprovalBlockers } from '../src/policy/policy.mjs';
 import { action, allow } from './helpers.mjs';
+import { rememberLearnedApproval } from '../src/approvals/store.mjs';
 
 for (const verdict of ['allow', 'deny', 'needs_user']) {
   test(`explicit authorization preserves model ${verdict}`, async () => {
@@ -97,6 +98,61 @@ test('learned approvals store hashes only, match exact scope, and respect cancel
     assert.notEqual((await service.reviewSensitiveAction({ ...request, command: 'printf changed', userAuthorization: 'none' })).verdict, 'allow');
     const controller = new AbortController(); controller.abort();
     assert.equal((await service.reviewSensitiveAction({ ...request, userAuthorization: 'none' }, { signal: controller.signal })).verdict, 'deny');
+  } finally {
+    if (previous === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previous;
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+for (const command of [
+  'rm -f /tmp/report.txt', 'unlink /tmp/report.txt', 'rmdir /tmp/empty',
+  'find /tmp -name report.txt -delete',
+  'DELETE FROM leads WHERE id = 2', 'UPDATE leads SET status = 1 WHERE id = 2',
+  'DELETE FROM "tasks" WHERE id = 2', 'UPDATE "tasks" SET status = 1 WHERE id = 2',
+  `psql -c 'UPDATE "tasks" SET status = 1 WHERE id = 2'`,
+]) {
+  test(`known command mutation requires a fresh review but remains human-reviewable: ${command}`, () => {
+    const validated = validateProposedAction(action({ operationKind: 'command', command, userAuthorization: 'explicit' }));
+    assert.equal(validated.ok, true);
+    assert.deepEqual(explicitAuthorizationBlockers(validated.value), []);
+    assert.ok(learnedApprovalBlockers(validated.value).length > 0);
+  });
+}
+
+test('a previously stored exact deletion hash cannot bypass fresh review', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'cpr-old-deletion-hash-'));
+  const previous = process.env.CODEX_HOME;
+  process.env.CODEX_HOME = home;
+  try {
+    const request = action({ operationKind: 'command', command: 'rm -f /tmp/report.txt', userAuthorization: 'explicit' });
+    // Seed a valid version-1 hash as if it had been learned before this policy.
+    await rememberLearnedApproval(request);
+    const statePath = join(home, 'plugin-state/codex-permission-reviewer/learned-approvals.json');
+    const before = await readFile(statePath, 'utf8');
+    let calls = 0;
+    const service = createReviewService({ authAvailable: async () => true, runAppServer: async () => { calls++; return JSON.stringify(allow); } });
+
+    const result = await service.reviewSensitiveAction({ ...request, userAuthorization: 'none' });
+
+    assert.equal(result.verdict, 'needs_user');
+    assert.equal(calls, 1);
+    assert.equal(await readFile(statePath, 'utf8'), before);
+  } finally {
+    if (previous === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previous;
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('explicitly reviewed file deletion is not persisted for later reuse', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'cpr-no-deletion-memory-'));
+  const previous = process.env.CODEX_HOME;
+  process.env.CODEX_HOME = home;
+  try {
+    const service = createReviewService({ authAvailable: async () => true, runAppServer: async () => JSON.stringify(allow) });
+    const result = await service.reviewSensitiveAction(action({ operationKind: 'command', command: 'rm -f /tmp/report.txt' }));
+
+    assert.equal(result.verdict, 'allow');
+    await assert.rejects(readFile(join(home, 'plugin-state/codex-permission-reviewer/learned-approvals.json')), { code: 'ENOENT' });
   } finally {
     if (previous === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previous;
     await rm(home, { recursive: true, force: true });
