@@ -63,3 +63,14 @@ prove the quality of real model responses or claim a live speedup.
 - [Codex AGENTS.md hierarchy](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
 - [Claude Code memory, imports, and path rules](https://code.claude.com/docs/en/memory)
+
+## Retrieve context without accumulating ceremony
+
+Before a structural or policy change, retrieve the existing architecture notes
+and the relevant shared guide; confirm the facts in source and tests. Preserve
+durable ownership, contract and risk decisions in those maintained documents
+instead of creating a new chat log for every edit. Update an existing decision
+when the behavior changes, so future agents recover current context. This
+engineering knowledge is separate from the plugin's private exact-scope approval
+memory. Never place raw action commands, credentials or user approval history in
+repository documentation.

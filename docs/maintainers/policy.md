@@ -14,9 +14,9 @@ host permissions or cause execution. Do not widen authorization to avoid latency
 | Host | Actual permissions, execution-time recheck and sandbox | Something this plugin overrides |
 
 Treat action metadata and reviewer responses as separate untrusted interfaces.
-Wire schemas live in action/contracts.mjs; normalization, redaction, prompts and
-canonical digests in action/metadata.mjs; response parsing in
-action/review-result.mjs. Keep strict local response validation even when the
+Wire schemas live in action/contracts; normalization, redaction, prompts and
+canonical digests in action/metadata; response parsing in
+action/review-result. Keep strict local response validation even when the
 model is asked for structured output. Only the host should add lifecycle metadata.
 
 ## Reason about a change across paths

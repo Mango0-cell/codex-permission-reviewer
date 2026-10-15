@@ -6,9 +6,9 @@ the local contract; this guide explains how to make decisions within it.
 
 ## Trace the path before adding structure
 
-Start at the actual trigger. MCP callers enter src/transport/mcp.mjs; installation
-enters bin/cli.mjs; existing imports enter scripts/server.mjs or
-scripts/app-server-client.mjs. Trace into src/review/service.mjs for coordination,
+Start at the actual trigger. MCP callers enter src/transport/; installation
+enters bin/; existing imports enter scripts/server.mjs or
+scripts/app-server-client.mjs. Trace into src/review/ for coordination,
 then into the appropriate action/policy/approvals/runtime domain. Tests mirror
 observable boundaries rather than every implementation function.
 
@@ -58,7 +58,7 @@ its application stack, organization workflows or folder taxonomy.
 
 ## Acceptance evidence
 
-Run tests/architecture.test.mjs for dependency direction, cycles, legacy exports,
+Run the architecture test suite for dependency direction, cycles, legacy exports,
 spec coverage and distribution. For moves, compare the sensitive implementation
 before and after; tests alone do not prove no behavior changed. Use the relevant
 policy/runtime guide for any altered behavior. Report remaining limitations and
