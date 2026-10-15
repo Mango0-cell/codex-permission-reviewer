@@ -160,3 +160,8 @@ for dependency boundaries, decision flow, and classifier limitations.
 Run `npm run check`, `npm test`, and `npm pack --dry-run` before submitting
 changes. Tests use fixture strings, temporary files, and trusted fake reviewer
 adapters; they do not execute proposed commands or require managed auth.
+
+Coding agents and human contributors should start with
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [maintenance map](docs/maintenance.md).
+Repository skills provide focused architecture, policy, and runtime expertise for
+both Codex and Claude Code; shared guides keep their engineering rules aligned.

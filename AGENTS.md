@@ -33,3 +33,13 @@ Run npm run check, npm test, npm pack --dry-run, and git diff --check. Changes t
 entrypoints or distribution must also preserve package contents, launcher paths,
 MCP schemas, and legacy exports. No release/version bump or installation is
 implied by a source refactor. Record behavior changes and limitations in docs.
+
+## Engineering navigation and scope
+
+Read docs/maintenance.md for the domain map, design-pattern choices, and expertise
+routes. Repository skills under .agents/skills/ provide architecture, policy, and
+runtime/protocol maintenance guidance. Load the route relevant to the change.
+Keep architecture/rules-only changes separate from behavioral fixes and
+performance changes unless the user explicitly requests a combined PR. A useful
+new abstraction has a concrete owner, a stable contract, and a demonstrated need;
+prefer explicit module calls over introducing frameworks or event buses.
