@@ -7,6 +7,7 @@ import { TOOL_NAME, MCP_PROTOCOL_VERSION, SUPPORTED_MCP_PROTOCOL_VERSIONS, MAX_R
 import { TOOL_DEFINITION } from '../action/contracts.ts';
 import { isPlainObject, validateProposedAction } from '../action/metadata.ts';
 import { reviewSensitiveAction } from '../review/service.ts';
+import { PACKAGE_VERSION } from '../version.ts';
 
 function jsonRpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
@@ -100,7 +101,7 @@ async function handleRpc(message: unknown, context: McpContext) {
       result: {
         protocolVersion: context.protocolVersion,
         capabilities: { tools: {} },
-        serverInfo: { name: "codex-permission-reviewer", version: "0.3.0" },
+        serverInfo: { name: "codex-permission-reviewer", version: PACKAGE_VERSION },
       },
     };
   }
@@ -202,4 +203,3 @@ export async function main() {
     process.removeListener("SIGINT", stop);
   }
 }
-

@@ -16,6 +16,7 @@ context for a fresh review, not a replacement for the host's approval rules.
 | Change metadata, response contracts, human confirmation, deterministic decisions or learned scope | src/action/, src/policy/, src/approvals/ | [Policy](maintainers/policy.md) |
 | Change latency, review coordination, caching, child lifecycle, MCP framing or shutdown | src/review/, src/runtime/, src/transport/ | [Runtime](maintainers/runtime.md) |
 | Change install or distribution | bin/cli.ts (generated `bin/cli.mjs`), package.json, .mcp.json, .codex-plugin/ | Architecture guide plus the local AGENTS.md |
+| Automate versioned GitHub releases | .github/release/, .releaserc.json, .github/workflows/ci.yml and src/version.ts | The release folder specification; GitHub assets only, no npm publication |
 | Change shipped instructions for agents using the plugin | skills/sensitive-permission-review/SKILL.md | Policy guide; keep usage aligned with real runtime behavior |
 | Change how agents maintain this repository | .agents/skills/, .claude/skills/, .claude/rules/, CLAUDE.md, AGENTS.md | This guide and the relevant expertise guide |
 | Write or reshape source code | Owning src/ domain and its nearest AGENTS.md | [Code-writing conventions](maintainers/engineering.md), plus the domain guide |

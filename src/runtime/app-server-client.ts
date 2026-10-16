@@ -8,6 +8,7 @@ import { constants as fsConstants } from "node:fs";
 import { chmod, lstat, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
+import { PACKAGE_VERSION } from "../version.js";
 
 /**
  * This client intentionally talks only to the local Codex app-server. It does
@@ -196,7 +197,7 @@ export function buildAppServerRequests({ cwd, prompt, outputSchema }: { cwd: str
   }
   return Object.freeze({
     initialize: jsonRpcRequest(EXPECTED_INITIALIZE_ID, "initialize", {
-      clientInfo: { name: "codex-permission-reviewer", version: "0.3.0" },
+      clientInfo: { name: "codex-permission-reviewer", version: PACKAGE_VERSION },
       capabilities: { experimentalApi: true },
     }),
     threadStart: jsonRpcRequest(EXPECTED_THREAD_START_ID, "thread/start", {

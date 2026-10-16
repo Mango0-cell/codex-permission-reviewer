@@ -76,12 +76,15 @@ provider-specific entrypoints thin; the shared expertise belongs in docs/maintai
 ## Commits and GitHub PRs
 
 Use [the commit guide](docs/maintainers/commits.md) for focused staging and
-Conventional Commit messages. Use [the PR guide](docs/maintainers/pull-requests.md)
-to inspect the full changed path, review an exact PR head, prepare a description
-from the checked-in template, or respond to feedback. An issue link is useful when
-one exists, but is not required. Report the exact checks and PR head SHA that were
-verified. Posting a review or changing a PR requires the task to call for that
-GitHub action; never merge unless the task explicitly authorizes the merge.
+Conventional Commit messages. Commit types also determine automated release
+versions; read [the release guide](docs/releases.md) before changing analyzer
+rules or merging release-worthy commits to `main`. Use the
+[PR guide](docs/maintainers/pull-requests.md) to inspect the full changed path,
+review an exact PR head, prepare a description from the checked-in template, or
+respond to feedback. An issue link is useful when one exists, but is not required.
+Report the exact checks and PR head SHA that were verified. Posting a review or
+changing a PR requires the task to call for that GitHub action; never merge unless
+the task explicitly authorizes the merge.
 
 ## Submit and recover
 

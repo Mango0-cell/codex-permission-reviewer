@@ -55,11 +55,17 @@ Do not pack with scripts disabled before building.
 
 ## Install paths
 
-Published npm archives contain dist/ JavaScript/declarations and generated
-compatibility launchers. They run without TypeScript, Node typings or a loader in
-the consuming project. Prebuilt archives support disabled install scripts; they
-are the preferred distribution artifact for a release. The current version-pinned
-installer and per-user auth/config boundaries remain unchanged.
+The GitHub release attaches a prebuilt npm-compatible `.tgz` archive containing
+dist/ JavaScript/declarations and generated compatibility launchers. It runs
+without TypeScript, Node typings or a loader in the consuming project and can be
+installed from the downloaded file without install scripts. The archive is not
+published to the npm registry. The source tag and archive share synchronized
+package, plugin, CLI, MCP and README versions.
+
+The version-pinned installer and per-user auth/config boundaries remain
+unchanged. GitHub source installs use `prepare` to build; release tags include
+the synchronized version metadata so the installer points at the same version
+reported by the compiled runtime.
 
 Git/GitHub source installs need prepare enabled: npm installs the checkout's
 build-time development dependencies and prepares the package before installation.

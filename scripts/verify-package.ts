@@ -4,6 +4,7 @@ import { access, chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'no
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { PACKAGE_VERSION } from '../src/version.js';
 
 function run(command: string, args: string[], options: { cwd?: string; input?: string; env?: NodeJS.ProcessEnv } = {}): string {
   const result = spawnSync(command, args, { ...options, encoding: 'utf8', timeout: 60_000 });
@@ -19,7 +20,8 @@ try {
   await writeFile(join(temporary, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
   run('npm', ['install', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', archive], { cwd: temporary });
   const installed = join(temporary, 'node_modules/codex-permission-reviewer');
-  const manifest = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8')) as { bin: Record<string, string>; types: string };
+  const manifest = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8')) as { bin: Record<string, string>; types: string; version: string };
+  assert.equal(manifest.version, PACKAGE_VERSION, 'archive package version must match the compiled runtime version');
   await access(join(installed, manifest.types));
   await assert.rejects(access(join(temporary, 'node_modules/typescript')), { code: 'ENOENT' });
   const consumer = join(temporary, 'consumer.mts');
@@ -74,7 +76,7 @@ try {
     assert.deepEqual(JSON.parse(await readFile(recordedArgs, 'utf8')), [
       'mcp', 'add', '--env', 'CODEX_PERMISSION_REVIEW_MODEL=gpt-5.6-luna', '--env',
       'CODEX_PERMISSION_REVIEW_EFFORT=max', 'codex-permission-reviewer', '--', 'npx', '-y',
-      'github:adriancho91s/codex-permission-reviewer#v0.3.0', 'mcp',
+      `github:adriancho91s/codex-permission-reviewer#v${PACKAGE_VERSION}`, 'mcp',
     ]);
   }
   const legacy = await import(pathToFileURL(join(installed, 'scripts/server.mjs')).href) as typeof import('./server.ts');
