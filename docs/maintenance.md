@@ -17,7 +17,7 @@ context for a fresh review, not a replacement for the host's approval rules.
 | Change latency, review coordination, caching, child lifecycle, MCP framing or shutdown | src/review/, src/runtime/, src/transport/ | [Runtime](maintainers/runtime.md) |
 | Change install or distribution | bin/cli.ts (generated `bin/cli.mjs`), package.json, .mcp.json, .codex-plugin/ | Architecture guide plus the local AGENTS.md |
 | Change shipped instructions for agents using the plugin | skills/sensitive-permission-review/SKILL.md | Policy guide; keep usage aligned with real runtime behavior |
-| Change how agents maintain this repository | .agents/skills/, .claude/, CLAUDE.md, AGENTS.md | This guide and the relevant expertise guide |
+| Change how agents maintain this repository | .agents/skills/, .claude/skills/, .claude/rules/, CLAUDE.md, AGENTS.md | This guide and the relevant expertise guide |
 | Write or reshape source code | Owning src/ domain and its nearest AGENTS.md | [Code-writing conventions](maintainers/engineering.md), plus the domain guide |
 | Stage and commit a change | Current branch and working tree | [Commit conventions](maintainers/commits.md) |
 | Review, prepare, or update a GitHub PR | PR base/head and changed files | [PR workflow](maintainers/pull-requests.md) |
@@ -28,14 +28,17 @@ establish what actually exists. Do not document a proposed feature as implemente
 
 ## Native entrypoints, one engineering contract
 
-Codex reads hierarchical AGENTS.md instructions and discovers the repository's
-expertise skills in .agents/skills/. Claude Code reads CLAUDE.md, imports the shared
-root contract there, uses one-line scoped CLAUDE.md mirrors to import each domain
-specification, and uses .claude/rules/ for path-scoped reminders plus
-.claude/skills/ for matching expertise. Claude's skill directories are relative symlinks to the canonical .agents/skills/
-directories; both providers read the same SKILL.md and maintainers/ guides. Update shared knowledge there rather than copying design
-rules into provider-specific files. Git checkouts must preserve these relative
-symlinks; they stay inside this repository and require no global installation.
+Codex reads hierarchical AGENTS.md instructions and discovers repository skills
+in `.agents/skills/<name>/SKILL.md`. Claude Code reads the root CLAUDE.md pointer,
+uses one-line CLAUDE.md mirrors for product/code domain specs, and discovers
+native project skills in `.claude/skills/<name>/SKILL.md`; `.claude/rules/`
+contains path-scoped reminders. The five skills use matching names (`architecture`,
+`commit`, `policy`, `pr`, `runtime`) and provider-native entrypoints. Keep shared
+engineering knowledge in `docs/maintainers/` and route both entrypoints there
+instead of copying full guides. Agent-setup folders intentionally have no nested
+AGENTS.md or CLAUDE.md specs; the provider's native skill and rule formats own
+those instructions. These repository-scoped files do not require global
+installation.
 
 The maintenance skills are repository-scoped. They are different from the
 permission-review skill installed for agents *using* the plugin. They should not

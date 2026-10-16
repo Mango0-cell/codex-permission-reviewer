@@ -14,8 +14,10 @@ TypeScript, Node typings and tests are development tooling; consumers run compil
 JavaScript. Read docs/typescript.md before changing types, builds or packaging.
 Keep runtime imports acyclic and domain dependencies enforced by
 tests/architecture.test.ts.
-Each new domain and every new tracked subdirectory must include an AGENTS.md
-specifying ownership, dependencies, invariants, and relevant validation.
+Each new domain and every new tracked subdirectory outside native agent-setup
+trees must include an AGENTS.md specifying ownership, dependencies, invariants,
+and relevant validation. The `.agents/` and `.claude/` trees use each provider's
+native skill/rule formats; do not add AGENTS.md or CLAUDE.md specs inside them.
 
 ## Required invariants
 
@@ -44,8 +46,9 @@ behavior changes and limitations in docs.
 
 Read docs/maintenance.md for the domain map, design-pattern choices, and expertise
 routes. Read docs/maintainers/engineering.md when writing code. Repository skills
-under .agents/skills/ cover architecture, policy, runtime, commits, and GitHub PRs;
-load the route relevant to the task. For Git history and PR work, read
+under `.agents/skills/` are `architecture`, `commit`, `policy`, `pr`, and
+`runtime`; Claude Code has native entrypoints with matching names in
+`.claude/skills/`. Load the route relevant to the task. For Git history and PR work, read
 docs/maintainers/commits.md and docs/maintainers/pull-requests.md. Keep
 architecture/rules-only changes separate from behavioral fixes and performance
 changes unless the user explicitly requests a combined PR. A useful new

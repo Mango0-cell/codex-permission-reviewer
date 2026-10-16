@@ -43,9 +43,11 @@ service. Runtime configuration is a leaf so loading contracts does not launch or
 load process orchestration. Built-in dependencies remain explicit.
 
 For a new module, state ownership, inputs/outputs, error behavior, cancellation
-owner if relevant, and callers. For a new folder, add its AGENTS.md. Move logic
-once, preserving stable exports through facades. If behavior changes, split the
-fix from a refactor so a reviewer can tell what is actually different.
+owner if relevant, and callers. For a new product/code folder, add its AGENTS.md.
+The `.agents/` and `.claude/` provider-setup trees are exempt: use native SKILL.md
+and rule files there without nested AGENTS.md or CLAUDE.md. Move logic once,
+preserving stable exports through facades. If behavior changes, split the fix
+from a refactor so a reviewer can tell what is actually different.
 
 ## Placement evidence
 

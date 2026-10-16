@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readdir, readFile, access, realpath } from 'node:fs/promises';
+import { readdir, readFile, access, lstat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import test from 'node:test';
 import * as legacy from '../scripts/server.js';
@@ -52,13 +52,20 @@ test('runtime domain dependencies are acyclic and stay inside declared boundarie
 
 test('every maintained domain and subdirectory has an AGENTS.md specification', async () => {
   assert.equal((await readFile('CLAUDE.md', 'utf8')).trim(), '@AGENTS.md');
-  const roots = ['src', 'bin', 'scripts', 'skills', 'tests', 'docs', '.github', '.codex-plugin', '.agents', '.claude'];
+  const roots = ['src', 'bin', 'scripts', 'skills', 'tests', 'docs', '.github', '.codex-plugin'];
   for (const root of roots) {
     const directories = new Set([root, ...(await files(root)).map(dirname)]);
     for (const directory of directories) {
       await access(`${directory}/AGENTS.md`);
       assert.equal((await readFile(`${directory}/CLAUDE.md`, 'utf8')).trim(), '@AGENTS.md');
     }
+  }
+});
+
+test('native agent setup trees use skills and rules without nested specs', async () => {
+  for (const root of ['.agents', '.claude']) {
+    const specs = (await files(root)).filter(path => path.endsWith('/AGENTS.md') || path.endsWith('/CLAUDE.md'));
+    assert.deepEqual(specs, [], `${root} should use provider-native instruction files`);
   }
 });
 
@@ -91,11 +98,33 @@ test('maintained source uses TypeScript and JavaScript launchers are generated',
   }
 });
 
-test('Claude expertise skills resolve to the canonical Codex skill directories', async () => {
-  const skills = (await readdir('.agents/skills', { withFileTypes: true })).filter(entry => entry.isDirectory());
-  assert.ok(skills.length > 0);
-  for (const { name } of skills) {
-    assert.equal(await realpath(`.claude/skills/${name}`), await realpath(`.agents/skills/${name}`));
-    await access(`.claude/skills/${name}/SKILL.md`);
+test('Codex and Claude have native skill folders with frontmatter and shared-guide routes', async () => {
+  const expectedGuides: Record<string, string> = {
+    architecture: 'architecture', commit: 'commits', policy: 'policy', pr: 'pull-requests', runtime: 'runtime',
+  };
+  for (const providerRoot of ['.agents/skills', '.claude/skills']) {
+    const names = (await readdir(providerRoot, { withFileTypes: true }))
+      .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+    assert.deepEqual(names, Object.keys(expectedGuides).sort(), `${providerRoot} skill names`);
+    for (const [name, guide] of Object.entries(expectedGuides)) {
+      const directory = `${providerRoot}/${name}`;
+      const skillPath = `${directory}/SKILL.md`;
+      const directoryStat = await lstat(directory);
+      const skillStat = await lstat(skillPath);
+      assert.equal(directoryStat.isDirectory(), true, `${directory} must be a real directory`);
+      assert.equal(directoryStat.isSymbolicLink(), false, `${directory} must not be a directory symlink`);
+      assert.equal(skillStat.isFile(), true, `${skillPath} must be a regular file`);
+      assert.equal(skillStat.isSymbolicLink(), false, `${skillPath} must not be a symlink`);
+
+      const content = await readFile(skillPath, 'utf8');
+      const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u)?.[1];
+      assert.ok(frontmatter, `${skillPath} needs YAML frontmatter`);
+      assert.match(frontmatter!, new RegExp(`^name: ${name}$`, 'mu'));
+      assert.match(frontmatter!, /^description:\s*\S.+$/mu);
+      const guideLink = `../../../docs/maintainers/${guide}.md`;
+      const links = [...content.matchAll(/\]\(([^)]+)\)/gu)].map(match => match[1]);
+      assert.ok(links.includes(guideLink), `${skillPath} must route to ${guideLink}`);
+      await access(resolve(directory, guideLink));
+    }
   }
 });

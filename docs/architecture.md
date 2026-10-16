@@ -37,8 +37,10 @@ Architecture tests reject cycles and imports outside these boundaries.
 | scripts/ | Compatibility exports/launcher and local syntax check |
 | bin/ | CLI installation and MCP process launch |
 
-Every maintained directory has an AGENTS.md with its contract. New domains and
-subfolders need their own specification. npm includes src/ so both the CLI and
+Every maintained product/code directory has an AGENTS.md with its contract.
+New domains and subfolders need their own specification, except the native
+agent-setup trees `.agents/` and `.claude/`, which use provider-native skills
+and rules without nested AGENTS.md or CLAUDE.md files. npm includes src/ so both the CLI and
 plugin launcher work from a packaged install. No installer configuration, running
 plugin, managed credentials, release tag, or published version is changed.
 
