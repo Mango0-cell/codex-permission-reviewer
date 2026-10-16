@@ -1,6 +1,6 @@
 {
   "name": "codex-permission-reviewer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Configurable model review for sensitive Codex actions with privacy-preserving approval learning.",
   "type": "module",
   "bin": {
@@ -31,7 +31,7 @@
     "permissions",
     "security"
   ],
-  "author": "Adri\u00e1n Gait\u00e1n <hello@adriangaitan.dev>",
+  "author": "Adrián Gaitán <hello@adriangaitan.dev>",
   "license": "MIT",
   "repository": {
     "type": "git",

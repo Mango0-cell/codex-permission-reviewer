@@ -28,14 +28,14 @@ Install remotely from the versioned GitHub source with Node.js 20+ and Codex
 `0.147+`:
 
 ```sh
-npx -y github:adriancho91s/codex-permission-reviewer#v0.3.0 install
+npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install
 ```
 
 The installer copies only the bundled permission-review skill into your own
 `CODEX_HOME` and registers this pinned MCP command:
 
 ```sh
-npx -y github:adriancho91s/codex-permission-reviewer#v0.3.0 mcp
+npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 mcp
 ```
 
 Each GitHub Release also includes a prebuilt `.tgz` package archive for local or
@@ -60,7 +60,7 @@ skill are loaded from the installed version.
 Choose another current or future Codex model by reinstalling the MCP entry:
 
 ```sh
-npx -y github:adriancho91s/codex-permission-reviewer#v0.3.0 install --force \
+npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install --force \
   --model MODEL_ID --effort max
 ```
 
