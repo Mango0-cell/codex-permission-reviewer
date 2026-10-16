@@ -1,196 +1,196 @@
+<!-- Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V4 -->
+
 # Codex Permission Reviewer
 
-`codex-permission-reviewer` adds a lightweight advisory check before actions
-that could cause meaningful damage or data loss. Its local
-`review_sensitive_action` MCP tool sends bounded, redacted metadata to an
-isolated child `codex app-server` using the managed ChatGPT/Codex account and
-the configured reviewer model and effort. The default is `gpt-5.6-luna` at
-`max`, and it can be changed without editing code.
+[![Latest release](https://img.shields.io/github/v/release/adriancho91s/codex-permission-reviewer?display_name=tag)](https://github.com/adriancho91s/codex-permission-reviewer/releases/latest)
+[![CI](https://github.com/adriancho91s/codex-permission-reviewer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/adriancho91s/codex-permission-reviewer/actions/workflows/ci.yml)
+[![MIT license](https://img.shields.io/github/license/adriancho91s/codex-permission-reviewer)](LICENSE)
 
-The configured isolated model is the only permission reviewer. The plugin does
-not invoke the general Codex code-review workflow. Routine reversible engineering actions remain
-autonomous: commits, ordinary non-force pushes, PR operations, CI/review work,
-narrow workspace edits, and read-only service interactions do not need this
-plugin merely because they use the network or an external system.
+A small second opinion for actions that could cause meaningful damage or data
+loss. Routine commits, ordinary pushes, pull requests, CI, narrow edits, and
+read-only work stay in your usual Codex flow.
 
-The child is ephemeral and uses a temporary `CODEX_HOME`, a temporary cwd, and
-a local `no-tools` permission profile. That profile extends `:read-only`,
-denies the filesystem root, disables network access, leaves `mcp_servers`
-empty, and disables shell, unified exec, apps, plugins, browser, image,
-multi-agent, hook, goal, memory, and web-search capabilities. The plugin never
-executes the proposed action. Before launch it resolves Codex from an absolute
-PATH entry, pins its real-path/device/inode identity, and passes the absolute
-executable path to the child.
+**Advisory only:** it never runs the proposed action or grants permission.
+Codex and your host's approval rules remain in control.
 
-## Installation
+## Install
 
-Install remotely from the versioned GitHub source with Node.js 20+ and Codex
-`0.147+`:
+Requires **Node.js 20+** and **Codex 0.147+**.
 
 ```sh
 npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install
 ```
 
-The installer copies only the bundled permission-review skill into your own
-`CODEX_HOME` and registers this pinned MCP command:
+Prefer a local package? [Download the prebuilt archive from the latest release](https://github.com/adriancho91s/codex-permission-reviewer/releases/latest).
+
+Start a new Codex thread after installation so it loads the skill and MCP tool.
+
+## How it works
+
+The bundled skill asks the local MCP tool to review bounded, redacted action
+details when a meaningful risk is present. The isolated reviewer returns advice;
+Codex still applies its own policy and asks you to approve when required. This
+is separate from Codex's general code-review workflow.
+
+```mermaid
+flowchart LR
+    A[Potentially damaging action] --> B[Bounded, redacted review request]
+    B --> C[Isolated Codex reviewer]
+    C --> D[Allow]
+    C --> E[Needs your confirmation]
+    C --> F[Deny]
+    D --> G[Host policy and approval still apply]
+    E --> H[Human confirms exact action]
+    H --> I[Fresh review may allow, ask again, or deny]
+    I --> D
+    I --> E
+    I --> F
+    F --> J[Do not proceed]
+```
+
+| Situation | What to expect |
+| --- | --- |
+| Routine, reversible work | Keep working without extra review just because the task uses a network or external service. |
+| Exact sensitive action | Targeted deletion, a production-data change, deployment, or an access-control change may need review. If you already authorized that exact action in this conversation, Codex can request a fresh review with that context. |
+| Broad, ambiguous, denied, or unavailable review | The action remains unapproved. A reviewer failure never becomes an allow. |
+
+Human confirmation is meaningful, but it is not a bypass: a model denial or
+`needs_user` verdict stays effective, and the host remains the final authority.
+
+## Other install options
+
+The source installer adds the bundled permission-review skill to your
+`CODEX_HOME` and registers a version-pinned local MCP command. It does not
+replace differing skill content unless you rerun it with `--force` after
+reviewing the change.
+
+<details>
+<summary>Marketplace, release archive, and MCP details</summary>
+
+If your team distributes the plugin through a marketplace, install it from that
+marketplace in the ChatGPT desktop app's Plugins Directory. To add a Git-backed
+marketplace source from the Codex CLI first:
+
+```sh
+codex plugin marketplace add OWNER/REPO
+```
+
+That command configures the marketplace source; it does not install the plugin.
+See [Codex marketplace setup](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli).
+
+Each [GitHub Release](https://github.com/adriancho91s/codex-permission-reviewer/releases)
+also includes a prebuilt `.tgz` archive for local or offline installation. The
+archive is built and tested from the same versioned source tag. Releases are
+hosted on GitHub; the package is not published to the npm registry.
+
+The MCP command registered by the installer is:
 
 ```sh
 npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 mcp
 ```
 
-Each GitHub Release also includes a prebuilt `.tgz` package archive for local or
-offline installation. The archive is built and tested from the same versioned
-source tag; releases are hosted on GitHub and are not published to the npm
-registry.
+The launcher uses the relative path `./scripts/server.mjs` with `cwd: "."` so
+Codex resolves it from each installed plugin root, not a machine-specific path.
 
-It does not read or copy Codex authentication. The MCP process uses your
-existing managed Codex login at runtime. Existing differing skill content is
-not overwritten unless you rerun the installer with `--force` after reviewing
-the change.
+</details>
 
-Codex can also install the package from a configured marketplace snapshot:
+## Trust and privacy
 
-```sh
-codex plugin add codex-permission-reviewer@YOUR_MARKETPLACE
-```
+- **You stay in control.** An `allow` is advice, not a host permission. It does
+  not change the Codex sandbox, bypass an approval prompt, or suppress the host's
+  own review. The host checks policy and approval again at execution time.
+- **No action execution.** The plugin reviews; it never runs the proposed
+  command or performs the requested operation.
+- **No credential handling by the plugin.** The local MCP uses your existing
+  managed Codex login. The child receives an OS-level symlink to the managed
+  `auth.json`; the plugin never opens, copies, logs, or stores that file or an
+  API key.
+- **Minimal approval memory.** Eligible approvals retain only a versioned hash
+  of the exact action scope and timestamps for 30 days. Raw commands, targets,
+  reasons, data, and secrets are not stored.
 
-Start a new Codex thread after either installation path so the MCP schema and
-skill are loaded from the installed version.
+<details>
+<summary>Confirmation rules and what cannot be approved</summary>
 
-Choose another current or future Codex model by reinstalling the MCP entry:
+Without exact current authorization or a matching, eligible, unexpired learned
+approval, only a verified narrow regular-file read can be automatically
+allowed, and only after trusted-root and filesystem checks. Sensitive actions
+can require fresh confirmation and a new review of the exact scope. Some risks
+remain blocked or require fresh review, including force pushes and unleased
+history rewrites, broad destructive SQL, broad or recursive filesystem
+operations, authorization bypass, ambiguous targets, and download-and-execute
+pipelines. Sensitive-data actions, non-reversible actions, and specified
+operation categories cannot use approval memory; deterministic policy still
+applies. See the [policy guide](docs/maintainers/policy.md) for the full
+eligibility rules.
+
+The plugin is a bounded advisory layer, not a shell or SQL interpreter. It
+recognizes common command patterns, but cannot resolve every alias, variable,
+generated program, or dialect. Absence of a detected pattern does not itself
+approve an action. See [architecture and classifier limits](docs/architecture.md).
+
+</details>
+
+## Optional setup
+
+The default reviewer is `gpt-5.6-luna` at `max` effort. To choose another
+supported Codex model and effort, reinstall the MCP entry:
 
 ```sh
 npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install --force \
   --model MODEL_ID --effort max
 ```
 
-The installer stores only the model ID and effort in the MCP configuration.
-Malformed identifiers or unsupported effort values fail closed. Every child
-response is checked against the configured model and effort before its verdict
-can be accepted.
+The selected model ID and effort are the only customization values saved in MCP
+configuration. The reviewer response is checked against both before its verdict
+is accepted.
 
-## Setup
-
-The plugin authenticates as the person who installed it by using that user's
-existing managed Codex login. It never asks for, reads, copies, logs, publishes,
-or stores an API key or login token. The parent Codex installation must have a
-regular `auth.json` in its managed Codex home; the child receives only an
-OS-level symlink to that file and the plugin never opens it. Every teammate
-therefore uses their own Codex account, subscription usage, and authorization
-boundary.
-
-The bundled Codex MCP launcher uses the relative script path
-`./scripts/server.mjs` and sets `cwd` to `"."`. Codex resolves that directory
-relative to each teammate's installed plugin root. Do not replace it with a
-machine-specific absolute path.
-
-For automatic `allow`, configure trusted workspace roots outside the repository
-and marketplace files:
+For automatic `allow`, configure trusted workspace roots outside the
+repository and marketplace files:
 
 ```sh
 export KIT_CODEX_AUTO_PERMISSION_WORKSPACE_ROOTS="/absolute/path/to/workspace"
 ```
 
-Roots supplied in a request are untrusted context. Without a trusted server
-root, a reviewer `allow` becomes `needs_user`. The plugin uses the same Codex
-account/session billing and authentication boundary as the local app-server;
-it does not create a separate API integration.
+Request-supplied roots are untrusted. Without a trusted server-side root, a
+reviewer `allow` becomes `needs_user`.
 
-## Team and workspace sharing
+<details>
+<summary>Account, team setup, and availability</summary>
 
-The package is portable: it contains no user home paths, usernames, tokens,
-auth material, API keys, or machine-specific Codex executable path. Each
-teammate must use Codex `0.147+`, sign in to their own managed ChatGPT/Codex
-account, and configure their own trusted workspace roots. The child resolves
-that teammate's `CODEX_HOME`, managed `auth.json`, and `codex` executable at
-runtime; the package never bundles or reads `auth.json`.
+The parent Codex installation needs a regular `auth.json` in its managed
+Codex home. The child runs with that user's managed login, subscription usage,
+and authorization boundary; there is no separate API integration or billing
+path. The plugin does not read the authentication file. Each teammate signs in
+to their own managed account and configures their own trusted workspace roots.
 
-For workspace distribution, a workspace admin publishes from ChatGPT
-**Plugins → Personal → Publish**, reviews the package and its local MCP
-boundary, and chooses the appropriate installation and role access. This
-package is not published or assigned to roles by the local install workflow.
-Publishing does not create a separate API billing path: every teammate's
-review remains on that teammate's managed Codex/ChatGPT account.
+For workspace distribution, an admin can publish from ChatGPT
+**Plugins → Personal → Publish**, review the package and local MCP boundary,
+and choose installation and role access. The local install workflow does not
+publish the plugin or set workspace role access.
 
-## Safety boundary
+Busy, timeout, or child-availability failures return `needs_user` with
+`reviewStatus: "unavailable"`; they never grant permission. A caller may retry
+the review query once within its remaining budget while the sensitive action
+waits. Missing auth needs setup help. Malformed output and policy denials remain
+distinct from availability failures; malformed output or isolation mismatches
+fail closed.
 
-This plugin is advisory only. `allow` never grants host permission, changes the
-Codex sandbox, bypasses an approval prompt, or suppresses `codex-auto-review`.
-Host approvals, host policy, and the host's recheck at execution time remain
-authoritative. The app-server call is independent and only avoids invoking the
-host review mechanism for this plugin's own advisory request.
+</details>
 
-Every genuinely sensitive request declares `userAuthorization` as `none` or `explicit`. The caller
-may use `explicit` only when the user authorized that exact action in the active
-conversation. A fresh explicit configured-model review can allow a targeted
-single-file deletion, production database change, deployment,
-credential/permission operation, or other exact sensitive action after informed
-confirmation. It cannot release plain force pushes or unleased history rewrites,
-broad destructive SQL, broad or recursive destructive filesystem commands,
-authorization bypass, download-and-execute pipelines, broad targets, or
-ambiguous metadata. The field is part of the result digest, and explicit
-reviews are never served from the ordinary result cache.
+## For contributors
 
-Successful explicit approvals can be learned for 30 days as a versioned
-SHA-256 hash of the exact action scope plus timestamps. No raw commands,
-targets, reasons, data, or secrets are stored. Production database/schema/data
-repair, credentials/permissions, process spawning, destructive operations,
-sensitive-data access, irreversible actions, history rewrites, and ambiguous
-actions are never learned and always require fresh confirmation.
-Common file and row mutation commands are also excluded from learning when the
-caller labels them as a generic command. This is a memory restriction; command
-review outcomes remain governed by the existing deterministic and model policy.
+Source is strict TypeScript under `src/`; `scripts/` keeps installed launcher
+paths stable. Tests use fixtures and temporary state, never proposed destructive
+commands or live reviewer calls. Start with [contributing](CONTRIBUTING.md),
+the [maintenance map](docs/maintenance.md), and the
+[architecture guide](docs/architecture.md). See [release and install details](docs/releases.md)
+and the [TypeScript build contract](docs/typescript.md).
 
-Without explicit authorization, only a narrow, regular-file `file_read` can be
-automatically allowed, and only after deterministic high-sensitivity checks
-plus real-path/no-follow descriptor verification inside a trusted root. Model
-output cannot override the deterministic authorization boundaries above.
-
-Every result includes a SHA-256 digest, review timestamp, and expiry. Any
-metadata or filesystem/action change invalidates the advisory result; this is
-not an atomic execution binding and does not eliminate TOCTOU risk.
-
-The MCP server supports protocol versions `2026-07-28`, `2025-06-18`, and
-`2024-11-05`,
-requires `initialize` before tool access, bounds streaming input/output, and
-does not approve execution on missing managed auth, malformed output, unexpected or embedded
-raw/turn tool items, model/profile mismatch, timeout, or child failure. It uses one
-in-flight child review with up to four pending requests, a rolling limit of five
-child reviews per 60 seconds, and a 64-entry five-minute sanitized LRU digest
-cache. Queue waiting and local reuse count toward the total request deadline.
-
-Busy/timeout/process availability failures return `needs_user` with
-`reviewStatus: "unavailable"`, `retryable`, and (when retryable) `retryAfterMs`.
-They never grant approval or become cached policy denials. Agents can continue
-independent work and retry the review query once within their remaining budget;
-the proposed sensitive action still waits. Missing auth requires setup help.
-Actual policy/model denials remain distinct and effective.
-
-Exact eligible sensitive actions without user authorization return `needs_user`.
-Human confirmation triggers a fresh explicit review; cached results never replace
-it. Full validated metadata is sent within the prompt bound. An oversized scope
-requires a narrower request rather than silently truncating evidence.
-
-## Development and architecture
-
-Strict TypeScript source is organized into action, policy, approvals, review,
-runtime, and transport domains under `src/`. The existing `scripts/` paths remain stable
-launchers and compatibility imports. Each maintained directory has an
-`AGENTS.md` specification. See [the architecture and review notes](docs/architecture.md)
-for dependency boundaries, decision flow, and classifier limitations.
-
-Run `npm ci`, `npm run check`, `npm test`, `npm run test:package`, and
-`npm pack --dry-run` before submitting changes. Tests use fixture strings,
-temporary files, and trusted fake reviewer adapters; they do not execute
-proposed commands or require managed auth.
-
-Coding agents and human contributors should start with
-[CONTRIBUTING.md](CONTRIBUTING.md) and the [maintenance map](docs/maintenance.md).
-Repository skills provide focused architecture, policy, runtime, commit, and PR
-expertise for both Codex and Claude Code; shared guides keep their engineering
-rules aligned.
-
-See [the TypeScript build and install contract](docs/typescript.md). Maintainers
-compile source once during build/pack; installed users run prebuilt JavaScript
-without a TypeScript compiler or transpilation loader. Existing `.mjs` launcher
-paths are generated compatibility shims, not separately maintained source.
+```sh
+npm ci
+npm run check
+npm test
+npm run test:package
+npm pack --dry-run
+```
