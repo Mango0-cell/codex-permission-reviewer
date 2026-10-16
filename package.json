@@ -1,6 +1,6 @@
 {
   "name": "codex-permission-reviewer",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Configurable model review for sensitive Codex actions with privacy-preserving approval learning.",
   "type": "module",
   "bin": {

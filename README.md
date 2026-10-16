@@ -18,7 +18,7 @@ Codex and your host's approval rules remain in control.
 Requires **Node.js 20+** and **Codex 0.147+**.
 
 ```sh
-npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install
+npx -y github:adriancho91s/codex-permission-reviewer#v0.4.1 install
 ```
 
 Prefer a local package? [Download the prebuilt archive from the latest release](https://github.com/adriancho91s/codex-permission-reviewer/releases/latest).
@@ -86,7 +86,7 @@ hosted on GitHub; the package is not published to the npm registry.
 The MCP command registered by the installer is:
 
 ```sh
-npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 mcp
+npx -y github:adriancho91s/codex-permission-reviewer#v0.4.1 mcp
 ```
 
 The launcher uses the relative path `./scripts/server.mjs` with `cwd: "."` so
@@ -137,7 +137,7 @@ The default reviewer is `gpt-5.6-luna` at `max` effort. To choose another
 supported Codex model and effort, reinstall the MCP entry:
 
 ```sh
-npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install --force \
+npx -y github:adriancho91s/codex-permission-reviewer#v0.4.1 install --force \
   --model MODEL_ID --effort max
 ```
 
