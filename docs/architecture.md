@@ -67,19 +67,29 @@ live Codex child or authentication. MCP metadata cannot inject these adapters.
 Learned approvals remain versioned action hashes and timestamps in compact JSON,
 bounded to 128 entries and 64 KiB. A bounded process-local index reuses exact
 digests only after each lookup revalidates the trusted regular file's `lstat`
-identity and entry expiry.
-A changed identity invalidates the index; a valid replacement is reloaded.
+identity and entry expiry. A changed identity invalidates the index; a valid
+replacement is reloaded. Reads use `O_NOFOLLOW` where available. Without it, the
+store compares the opened handle's identity to the trusted pre-open identity
+before reading, bounds the read, then compares handle and path identity again.
+On Windows this relies on the canonical local `CODEX_HOME` state path; it does
+not prove ACLs or kernel no-follow equivalence. Where supported, POSIX checks
+enforce current-user ownership, reject group/other-writable state directories,
+and require state-file mode `0600`. Windows mode and owner checks are unavailable;
+access depends on host ACLs, which this plugin does not verify. Identity checks
+limit replacement races but cannot guarantee linearizable revocation.
 Missing, unreadable, oversized, unparsable, version-mismatched, symlinked, or
 insecure state follows the ordinary review path; malformed individual entries
 are ignored. Expired entries do not match. Approval expiry is fixed; a lookup
 does not extend it.
-Writes use a same-directory temporary file with mode `0600` and atomic
-replacement, and are serialized within one process. Separate processes may
-overwrite one another's updates, which can lose an approval and require a fresh
-review. Deleting the `plugin-state/codex-permission-reviewer/learned-approvals.json`
-file under `CODEX_HOME` (or `~/.codex` when `CODEX_HOME` is unset or not absolute)
-clears learned approvals; this local memory does not change eligibility or
-replace host approval.
+Writes use a same-directory temporary file with mode `0600` where POSIX mode
+bits apply and atomic replacement, and are serialized within one process.
+Windows follows host ACLs; this store does not validate them. Separate processes
+may overwrite one another's updates, which can lose an approval and require a
+fresh review. Deleting the
+`plugin-state/codex-permission-reviewer/learned-approvals.json` file under
+`CODEX_HOME` (or `~/.codex` when `CODEX_HOME` is unset or not absolute) clears
+learned approvals; this local memory does not change eligibility or replace host
+approval.
 
 ## PR #2 review and expanded regression scope
 

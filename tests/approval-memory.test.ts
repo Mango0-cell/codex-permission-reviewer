@@ -189,6 +189,114 @@ test('external replacement, deletion, corruption and symlinks cannot reuse a sta
   }
 });
 
+test('a symlink target swapped in before open is rejected without reading its contents', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'reviewer-memory-open-race-'));
+  const previous = process.env.CODEX_HOME;
+  process.env.CODEX_HOME = home;
+  try {
+    const scope = normalizeActionForReview(action());
+    assert.ok(scope);
+    await rememberLearnedApproval(scope);
+    assert.equal(await hasLearnedApproval(scope), true);
+
+    const directory = join(home, 'plugin-state/codex-permission-reviewer');
+    const file = join(directory, 'learned-approvals.json');
+    const canonicalFile = await fs.realpath(file);
+    const raw = await readFile(file, 'utf8');
+    const replacement = join(directory, 'replacement.json');
+    const target = join(directory, 'symlink-target.json');
+    await writeFile(replacement, raw, { encoding: 'utf8', mode: 0o600 });
+    await writeFile(target, raw, { encoding: 'utf8', mode: 0o600 });
+    await rename(replacement, file);
+
+    let stateReads = 0;
+    let stateBytesRead = 0;
+    const originalOpen = fs.open.bind(fs);
+    mock.method(fs, 'open', async (path: PathLike, flags: OpenMode, mode?: Mode) => {
+      if (String(path) === canonicalFile) {
+        await rm(canonicalFile);
+        await symlink(target, canonicalFile, 'file');
+      }
+      const handle = await originalOpen(path, flags, mode);
+      if (String(path) === canonicalFile) {
+        const originalRead = handle.read.bind(handle);
+        mock.method(handle, 'read', async (buffer: Buffer | Uint8Array, offset: number, length: number, position: number | null) => {
+          stateReads += 1;
+          const result = await originalRead(buffer, offset, length, position);
+          stateBytesRead += result.bytesRead;
+          return result;
+        });
+      }
+      return handle;
+    });
+    try {
+      await assert.rejects(hasLearnedApproval(scope));
+      assert.equal(stateReads, 0, 'the replacement target must be rejected before a content read');
+      assert.equal(stateBytesRead, 0);
+    } finally {
+      mock.restoreAll();
+    }
+
+    await rm(canonicalFile, { force: true });
+    await writeFile(canonicalFile, raw, { encoding: 'utf8', mode: 0o600 });
+    assert.equal(await hasLearnedApproval(scope), true);
+  } finally {
+    mock.restoreAll();
+    if (previous === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previous;
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a state path replaced during reading rejects the load and cannot leave a warm positive', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'reviewer-memory-read-race-'));
+  const previous = process.env.CODEX_HOME;
+  process.env.CODEX_HOME = home;
+  try {
+    const scope = normalizeActionForReview(action());
+    assert.ok(scope);
+    await rememberLearnedApproval(scope);
+    assert.equal(await hasLearnedApproval(scope), true);
+
+    const directory = join(home, 'plugin-state/codex-permission-reviewer');
+    const file = join(directory, 'learned-approvals.json');
+    const canonicalFile = await fs.realpath(file);
+    const raw = await readFile(file, 'utf8');
+    const reload = join(directory, 'reload.json');
+    const emptyReplacement = join(directory, 'empty-replacement.json');
+    await writeFile(reload, raw, { encoding: 'utf8', mode: 0o600 });
+    await rename(reload, file);
+    await writeFile(emptyReplacement, JSON.stringify({ version: 1, approvals: [] }), { encoding: 'utf8', mode: 0o600 });
+
+    let replacedAfterRead = false;
+    const originalOpen = fs.open.bind(fs);
+    mock.method(fs, 'open', async (path: PathLike, flags: OpenMode, mode?: Mode) => {
+      const handle = await originalOpen(path, flags, mode);
+      if (String(path) !== canonicalFile || replacedAfterRead) return handle;
+      const originalRead = handle.read.bind(handle);
+      mock.method(handle, 'read', async (buffer: Buffer | Uint8Array, offset: number, length: number, position: number | null) => {
+        const result = await originalRead(buffer, offset, length, position);
+        if (!replacedAfterRead && result.bytesRead > 0) {
+          replacedAfterRead = true;
+          await rename(emptyReplacement, canonicalFile);
+        }
+        return result;
+      });
+      return handle;
+    });
+    try {
+      await assert.rejects(hasLearnedApproval(scope));
+      assert.equal(replacedAfterRead, true);
+      assert.equal(await hasLearnedApproval(scope), false);
+    } finally {
+      mock.restoreAll();
+    }
+  } finally {
+    mock.restoreAll();
+    if (previous === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previous;
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test('learned state writes are atomic, clean up failed temporary files and serialize local approvals', async () => {
   const home = await mkdtemp(join(tmpdir(), 'reviewer-memory-write-'));
   const previous = process.env.CODEX_HOME;

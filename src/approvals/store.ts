@@ -153,11 +153,10 @@ async function readStateFile(statePath: string, expectedIdentity: StoreIdentity)
     throw new Error("learned approval state directory changed before it could be read");
   }
   const noFollow = constants.O_NOFOLLOW;
-  if (typeof noFollow !== "number" || noFollow <= 0) {
-    throw new Error("no-follow approval state reads are unsupported");
-  }
-
-  const handle = await fs.open(statePath, constants.O_RDONLY | noFollow);
+  // Windows lacks O_NOFOLLOW; the descriptor/path identity checks below must
+  // still match the trusted lstat identity before any state bytes are read.
+  const openFlags = constants.O_RDONLY | (typeof noFollow === "number" && noFollow > 0 ? noFollow : 0);
+  const handle = await fs.open(statePath, openFlags);
   try {
     const openedStats = await handle.stat({ bigint: true });
     assertTrustedStateFile(openedStats);

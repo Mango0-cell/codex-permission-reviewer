@@ -42,14 +42,27 @@ are discarded. Expired entries do not match, and a hit does not extend the
 approval's expiry.
 Deleting the learned-approval state file resets this memory.
 
+On POSIX, retain current-user ownership checks, reject group/other-writable
+state directories, and require state-file mode `0600`. Use `O_NOFOLLOW` when the
+platform provides it. Otherwise, including on Windows, precheck the canonical
+local state path with `lstat`, require a regular file, then compare the opened
+handle's `fstat` identity before reading any content.
+Bound the read and compare handle and path identity again afterward; reject a
+mismatch and clear the index. This fallback relies on the canonical local
+`CODEX_HOME` boundary; it does not verify Windows ACLs or provide
+O_NOFOLLOW-equivalent behavior. Identity checks limit replacement races but do
+not make revocation linearizable. Run the focused Node 20 Windows CI job before
+publishing this path.
+
 Serialize writes within the process and replace the state through a same-directory
-temporary file with mode `0600` and atomic rename. Cross-process updates are
-best-effort, not transactional; a competing write can lose a stored approval and
-cause a fresh review. Keep that failure mode a miss, never a broader or fuzzy
-match. The store remains a compact JSON file plus an in-process index; it adds no
-database, compression, or runtime dependency. It uses Node built-ins and requires
-no service, native module, or manual migration. Do not claim a latency target
-without measurement.
+temporary file with mode `0600` where POSIX mode bits apply and atomic rename.
+Windows follows host ACLs; the store does not validate them. Cross-process
+updates are best-effort, not transactional; a competing write can lose a stored
+approval and cause a fresh review. Keep that failure mode a miss, never a broader
+or fuzzy match. The store remains a compact JSON file plus an in-process index;
+it adds no database, compression, or runtime dependency. It uses Node built-ins
+and requires no service, native module, or manual migration. Do not claim a
+latency target without measurement.
 
 Retry a review query only for a documented transient failure, under a bounded
 attempt/time budget. Never retry the proposed sensitive action as a substitute
