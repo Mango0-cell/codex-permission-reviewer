@@ -4,7 +4,7 @@ import { access, chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'no
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { PACKAGE_VERSION } from '../src/version.js';
+import { PACKAGE_VERSION } from '../src/version.ts';
 
 function run(command: string, args: string[], options: { cwd?: string; input?: string; env?: NodeJS.ProcessEnv } = {}): string {
   const result = spawnSync(command, args, { ...options, encoding: 'utf8', timeout: 60_000 });

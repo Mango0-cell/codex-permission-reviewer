@@ -6,7 +6,7 @@ import { chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PACKAGE_VERSION } from "../src/version.js";
+import { PACKAGE_VERSION } from "../src/version.ts";
 
 const PACKAGE_NAME = "codex-permission-reviewer";
 const REMOTE_PACKAGE = `github:adriancho91s/${PACKAGE_NAME}#v${PACKAGE_VERSION}`;

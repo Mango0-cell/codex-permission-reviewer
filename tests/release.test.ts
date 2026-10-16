@@ -3,8 +3,8 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { synchronizeReleaseMetadata } from "../.github/release/prepare.js";
-import { PACKAGE_VERSION } from "../src/version.js";
+import { synchronizeReleaseMetadata } from "../.github/release/prepare.ts";
+import { PACKAGE_VERSION } from "../src/version.ts";
 
 const PACKAGE_NAME = "codex-permission-reviewer";
 const REPOSITORY_OWNER = "adriancho91s";

@@ -8,7 +8,7 @@ import { constants as fsConstants } from "node:fs";
 import { chmod, lstat, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
-import { PACKAGE_VERSION } from "../version.js";
+import { PACKAGE_VERSION } from "../version.ts";
 
 /**
  * This client intentionally talks only to the local Codex app-server. It does
