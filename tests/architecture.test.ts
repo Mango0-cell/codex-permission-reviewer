@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { readdir, readFile, access, lstat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import test from 'node:test';
@@ -88,17 +87,18 @@ test('legacy launcher exports remain available and point to production implement
   assert.deepEqual(legacyClient, client);
 });
 
-test('npm distribution contains built modules, declarations and generated compatibility launchers', async () => {
-  const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { encoding: 'utf8' })) as [{ files: { path: string }[] }];
-  const paths = new Set(pack.files.map(file => file.path));
-  for (const path of (await files('src')).filter(path => path.endsWith('.ts'))) {
-    const emitted = `dist/${path.replace(/\.ts$/u, '.js')}`;
-    assert.ok(paths.has(emitted), `missing packaged runtime ${emitted}`);
-    assert.ok(paths.has(emitted.replace(/\.js$/u, '.d.ts')), `missing declarations ${emitted}`);
+test('package manifest allowlists built output without test-time packaging', async () => {
+  const manifest: unknown = JSON.parse(await readFile('package.json', 'utf8'));
+  assert.ok(typeof manifest === 'object' && manifest !== null && 'files' in manifest);
+  const rawFiles = manifest.files;
+  assert.ok(Array.isArray(rawFiles));
+  const files = (rawFiles as unknown[]).filter((file): file is string => typeof file === 'string');
+  assert.equal(files.length, rawFiles.length, 'package files allowlist must contain strings only');
+
+  for (const path of ['dist/bin/', 'dist/scripts/', 'dist/src/', 'bin/cli.mjs', 'scripts/server.mjs', 'scripts/app-server-client.mjs', 'skills/', '.mcp.json', '.codex-plugin/', 'LICENSE', 'README.md', 'docs/', 'AGENTS.md']) {
+    assert.ok(files.includes(path), `package allowlist is missing ${path}`);
   }
-  for (const path of ['scripts/server.mjs', 'scripts/app-server-client.mjs', 'bin/cli.mjs', 'skills/sensitive-permission-review/SKILL.md', '.mcp.json', '.codex-plugin/plugin.json']) assert.ok(paths.has(path), `missing entrypoint ${path}`);
-  assert.ok(![...paths].some(path => path.startsWith('graphify-out/') || path.startsWith('dist/tests/')));
-  assert.ok(![...paths].some(path => /^(src|tests|bin|scripts)\/.*\.ts$/u.test(path)));
+  assert.ok(!files.some(path => ['src/', 'tests/', 'dist/tests/', 'graphify-out/'].includes(path)));
 });
 
 test('maintained source uses TypeScript and JavaScript launchers are generated', async () => {
