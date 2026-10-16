@@ -31,8 +31,10 @@ and newer; the Node 24 job does not raise the runtime minimum.
 Runs are grouped by workflow and ref without canceling a running job; the
 release job also skips a queued run if `main` has advanced past its tested SHA.
 The workflow has read-only repository contents permission by default. Only the
-release job receives `contents: write`, and it supplies GitHub's workflow token
-only to the release command. Pull requests do not run the release job. Merging
+release job receives `contents: write`; the workflow token is not persisted by
+checkout or made available to build, test and verification steps. The final
+release step receives it for GitHub API calls and uses a temporary Git askpass
+helper for metadata/tag pushes. Pull requests do not run the release job. Merging
 release-worthy commits to `main` can therefore create a public GitHub release
 after the matrix succeeds; there is no separate manual version selector.
 The workflow needs no npm publishing token, OIDC permission, personal access token,

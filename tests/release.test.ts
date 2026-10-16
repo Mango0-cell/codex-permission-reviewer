@@ -153,4 +153,9 @@ test("release tooling stays isolated and GitHub-only with no issue or registry w
   for (const key of ["successComment", "successCommentCondition", "failComment", "failCommentCondition", "labels", "releasedLabels", "addReleases", "discussionCategoryName"]) {
     assert.equal(githubOptions[key], false, `GitHub release option ${key} must not write issues, PRs or discussions`);
   }
+  const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+  assert.match(workflow, /fetch-depth: 0\s+persist-credentials: false/u);
+  assert.match(workflow, /GIT_ASKPASS=/u);
+  assert.match(workflow, /GIT_TERMINAL_PROMPT=0/u);
+  assert.equal([...workflow.matchAll(/GITHUB_TOKEN:/gu)].length, 1, "the token belongs only to the final release step");
 });
