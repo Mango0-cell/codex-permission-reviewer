@@ -62,11 +62,16 @@ reviewing the change.
 <details>
 <summary>Marketplace, release archive, and MCP details</summary>
 
-Codex can install from a configured marketplace snapshot:
+If your team distributes the plugin through a marketplace, install it from that
+marketplace in the ChatGPT desktop app's Plugins Directory. To add a Git-backed
+marketplace source from the Codex CLI first:
 
 ```sh
-codex plugin add codex-permission-reviewer@YOUR_MARKETPLACE
+codex plugin marketplace add OWNER/REPO
 ```
+
+That command configures the marketplace source; it does not install the plugin.
+See [Codex marketplace setup](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli).
 
 Each [GitHub Release](https://github.com/adriancho91s/codex-permission-reviewer/releases)
 also includes a prebuilt `.tgz` archive for local or offline installation. The
