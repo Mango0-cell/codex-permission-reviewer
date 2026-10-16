@@ -247,7 +247,7 @@ test('a symlink target swapped in before open is rejected without reading its co
   }
 });
 
-test('a state path replaced during reading rejects the load and cannot leave a warm positive', async () => {
+test('a state file changed during reading rejects the load and cannot leave a warm positive', async () => {
   const home = await mkdtemp(join(tmpdir(), 'reviewer-memory-read-race-'));
   const previous = process.env.CODEX_HOME;
   process.env.CODEX_HOME = home;
@@ -262,30 +262,29 @@ test('a state path replaced during reading rejects the load and cannot leave a w
     const canonicalFile = await fs.realpath(file);
     const raw = await readFile(file, 'utf8');
     const reload = join(directory, 'reload.json');
-    const emptyReplacement = join(directory, 'empty-replacement.json');
     await writeFile(reload, raw, { encoding: 'utf8', mode: 0o600 });
     await rename(reload, file);
-    await writeFile(emptyReplacement, JSON.stringify({ version: 1, approvals: [] }), { encoding: 'utf8', mode: 0o600 });
+    const emptyState = JSON.stringify({ version: 1, approvals: [] });
 
-    let replacedAfterRead = false;
+    let changedAfterRead = false;
     const originalOpen = fs.open.bind(fs);
     mock.method(fs, 'open', async (path: PathLike, flags: OpenMode, mode?: Mode) => {
       const handle = await originalOpen(path, flags, mode);
-      if (String(path) !== canonicalFile || replacedAfterRead) return handle;
+      if (String(path) !== canonicalFile || changedAfterRead) return handle;
       const originalRead = handle.read.bind(handle);
       mock.method(handle, 'read', async (buffer: Buffer | Uint8Array, offset: number, length: number, position: number | null) => {
         const result = await originalRead(buffer, offset, length, position);
-        if (!replacedAfterRead && result.bytesRead > 0) {
-          replacedAfterRead = true;
-          await rename(emptyReplacement, canonicalFile);
+        if (!changedAfterRead && result.bytesRead > 0) {
+          changedAfterRead = true;
+          await writeFile(canonicalFile, emptyState, 'utf8');
         }
         return result;
       });
       return handle;
     });
     try {
-      await assert.rejects(hasLearnedApproval(scope));
-      assert.equal(replacedAfterRead, true);
+      await assert.rejects(hasLearnedApproval(scope), /changed while it was read/u);
+      assert.equal(changedAfterRead, true);
       assert.equal(await hasLearnedApproval(scope), false);
     } finally {
       mock.restoreAll();
