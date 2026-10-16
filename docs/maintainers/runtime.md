@@ -29,6 +29,28 @@ or retrying them. A transient process/transport failure must not become a reusab
 policy denial. Preserve original result expiry; do not extend approval freshness
 on every cache hit. Reverify cached safe reads.
 
+The learned-approval store is separate from the short-lived review-result cache.
+It persists only versioned action hashes and timestamps in compact JSON, bounded
+to 128 entries and 64 KiB, and keeps a process-local index of those exact hashes.
+Eligibility remains policy-owned; the index only matches exact hashes. Before
+every lookup, verify the trusted regular file's `lstat` identity and the matching
+entry's fixed expiry. A changed identity invalidates the index and reloads a
+valid replacement file.
+Missing, unreadable, oversized, unparsable, version-mismatched, symlinked, or
+insecure state must fall through to normal review; malformed individual entries
+are discarded. Expired entries do not match, and a hit does not extend the
+approval's expiry.
+Deleting the learned-approval state file resets this memory.
+
+Serialize writes within the process and replace the state through a same-directory
+temporary file with mode `0600` and atomic rename. Cross-process updates are
+best-effort, not transactional; a competing write can lose a stored approval and
+cause a fresh review. Keep that failure mode a miss, never a broader or fuzzy
+match. The store remains a compact JSON file plus an in-process index; it adds no
+database, compression, or runtime dependency. It uses Node built-ins and requires
+no service, native module, or manual migration. Do not claim a latency target
+without measurement.
+
 Retry a review query only for a documented transient failure, under a bounded
 attempt/time budget. Never retry the proposed sensitive action as a substitute
 for obtaining review. Continue independent work where permitted by host policy.
