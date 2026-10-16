@@ -102,14 +102,15 @@ Codex resolves it from each installed plugin root, not a machine-specific path.
 <details>
 <summary>Confirmation rules and what cannot be approved</summary>
 
-Without exact active-conversation authorization, only a verified narrow regular
-file read can be automatically allowed, and only after trusted-root and
-filesystem checks. Sensitive actions can require fresh confirmation and a new
-review of the exact scope. Some risks remain blocked or require fresh review,
-including force pushes and unleased history rewrites, broad destructive SQL,
-broad or recursive filesystem operations, authorization bypass, ambiguous
-targets, and download-and-execute pipelines. Eligible destructive actions are
-excluded from approval learning and require fresh review.
+Without exact current authorization or a matching, eligible, unexpired learned
+approval, only a verified narrow regular-file read can be automatically
+allowed, and only after trusted-root and filesystem checks. Sensitive actions
+can require fresh confirmation and a new review of the exact scope. Some risks
+remain blocked or require fresh review, including force pushes and unleased
+history rewrites, broad destructive SQL, broad or recursive filesystem
+operations, authorization bypass, ambiguous targets, and download-and-execute
+pipelines. Destructive actions are excluded from approval learning and require
+fresh review.
 
 The plugin is a bounded advisory layer, not a shell or SQL interpreter. It
 recognizes common command patterns, but cannot resolve every alias, variable,
