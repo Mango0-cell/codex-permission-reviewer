@@ -154,6 +154,18 @@ test("release tooling stays isolated and GitHub-only with no issue or registry w
     assert.equal(githubOptions[key], false, `GitHub release option ${key} must not write issues, PRs or discussions`);
   }
   const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+  const validationStart = workflow.indexOf("  release-validation:\n");
+  const releaseStart = workflow.indexOf("  release:\n", validationStart);
+  assert.ok(validationStart >= 0 && releaseStart > validationStart, "release validation must be a separate CI job");
+  const validationJob = workflow.slice(validationStart, releaseStart);
+  assert.match(validationJob, /needs: test\n/u);
+  assert.match(validationJob, /permissions:\n      contents: read\n/u);
+  assert.match(validationJob, /persist-credentials: false/u);
+  assert.ok(!/GITHUB_TOKEN|secrets\./u.test(validationJob), "release validation must not receive a publishing token");
+  const toolingInstall = validationJob.indexOf("npm ci --prefix .github/release");
+  const prepareSmoke = validationJob.indexOf("verify-prepare-smoke.js");
+  assert.ok(toolingInstall >= 0 && prepareSmoke > toolingInstall, "prepare smoke must use the pinned release tooling");
+  assert.match(workflow.slice(releaseStart), /needs: \[test, release-validation\]/u);
   assert.match(workflow, /fetch-depth: 0\s+persist-credentials: false/u);
   assert.match(workflow, /GIT_ASKPASS=/u);
   assert.match(workflow, /GIT_TERMINAL_PROMPT=0/u);
