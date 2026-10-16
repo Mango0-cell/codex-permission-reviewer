@@ -157,7 +157,9 @@ try {
   await writeFile(join(fixture, ".releaserc.json"), `${JSON.stringify(localConfig, null, 2)}\n`);
   const environment = { ...process.env };
   for (const key of Object.keys(environment)) {
-    if (/(?:TOKEN|PASSWORD|AUTH|SECRET|CREDENTIAL|PRIVATE_KEY)/iu.test(key)) delete environment[key];
+    if (/(?:TOKEN|PASSWORD|AUTH|SECRET|CREDENTIAL|PRIVATE_KEY)/iu.test(key) || key.startsWith("GITHUB_") || key === "CI") {
+      delete environment[key];
+    }
   }
   environment.NPM_CONFIG_USERCONFIG = process.platform === "win32" ? "NUL" : "/dev/null";
   const dryRunOutput = run(process.execPath, [
