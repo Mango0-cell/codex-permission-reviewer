@@ -2,9 +2,10 @@
 
 Human and coding-agent contributors use the same engineering contract. Start with
 [AGENTS.md](AGENTS.md), [the maintenance map](docs/maintenance.md), and the nearest
-domain specification. Claude Code also reads [CLAUDE.md](CLAUDE.md). The native
-repository skills provide architecture, policy, and runtime expertise; they do
-not install or modify your global configuration.
+domain specification. Claude Code also reads [CLAUDE.md](CLAUDE.md). Native
+repository skills in `.agents/skills/` (Codex) and `.claude/skills/` (Claude
+Code) route to shared architecture, policy, runtime, commit, and PR guides; they
+do not install or modify global configuration.
 
 ## Choose a reviewable change
 
@@ -18,8 +19,10 @@ Maintain strict TypeScript compiled to NodeNext ESM for Node >=20, with built-in
 runtime modules. Follow the pattern selection guide in
 docs/maintainers/architecture.md. Prefer small explicit contracts and local
 functions; add new dependencies or infrastructure only for a concrete need.
-Every new domain/subfolder requires an AGENTS.md specifying its owner,
-dependencies, invariants and relevant validation.
+Every new domain/subfolder outside the native agent-setup trees requires an
+AGENTS.md specifying its owner, dependencies, invariants and relevant
+validation. Use provider-native SKILL.md and rule formats inside `.agents/` and
+`.claude/`; do not add AGENTS.md or CLAUDE.md there.
 
 Follow [the code-writing conventions](docs/maintainers/engineering.md): keep
 side effects at explicit boundaries, validate untrusted inputs before use, give
