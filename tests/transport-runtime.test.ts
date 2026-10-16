@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
-import { readBoundedLines } from '../src/transport/mcp.js';
-import { buildMinimalChildEnvironment, appServerConfigText, buildAppServerRequests } from '../src/runtime/app-server-client.js';
+import { readBoundedLines } from '../src/transport/mcp.ts';
+import { buildMinimalChildEnvironment, appServerConfigText, buildAppServerRequests } from '../src/runtime/app-server-client.ts';
 
 test('MCP rejects pre-initialize tool access and negotiates protocol through stable launcher', async () => {
   const child = spawn(process.execPath, ['scripts/server.mjs'], { stdio: ['pipe', 'pipe', 'pipe'] });

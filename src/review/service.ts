@@ -1,13 +1,13 @@
-import type { ReviewOptions, ReviewAdapters } from "./types.js";
-import type { NormalizedAction, ReviewResult } from "../action/types.js";
-import { DEFAULT_REVIEW_TIMEOUT_MS, MAX_REVIEW_TIMEOUT_MS, MAX_QUEUED_REVIEWS, REVIEW_TTL_MS, REVIEW_RATE_LIMIT_MAX_CALLS, REVIEW_RATE_LIMIT_WINDOW_MS, MAX_REVIEW_CACHE_ENTRIES } from '../config.js';
-import { REVIEW_RESPONSE_SCHEMA } from '../action/contracts.js';
-import { validateProposedAction, buildReviewerPromptFromValidated, normalizeActionForReview, actionSha256, ReviewerPromptSizeError } from '../action/metadata.js';
-import { hasLearnedApproval, rememberLearnedApproval } from '../approvals/store.js';
-import { decorateReview, outputFailure, parseReviewerOutput, reviewerUnavailable } from '../action/review-result.js';
-import { deterministicHighSensitivityHazards, verifySafeRead, learnedApprovalBlockers, applyDeterministicPolicy } from '../policy/policy.js';
-import { AppServerReviewError, runCodexAppServer, managedAuthAvailable } from '../runtime/app-server-client.js';
-import { createReviewScheduler, ReviewSchedulingError, withReviewDeadline } from './scheduler.js';
+import type { ReviewOptions, ReviewAdapters } from "./types.ts";
+import type { NormalizedAction, ReviewResult } from "../action/types.ts";
+import { DEFAULT_REVIEW_TIMEOUT_MS, MAX_REVIEW_TIMEOUT_MS, MAX_QUEUED_REVIEWS, REVIEW_TTL_MS, REVIEW_RATE_LIMIT_MAX_CALLS, REVIEW_RATE_LIMIT_WINDOW_MS, MAX_REVIEW_CACHE_ENTRIES } from '../config.ts';
+import { REVIEW_RESPONSE_SCHEMA } from '../action/contracts.ts';
+import { validateProposedAction, buildReviewerPromptFromValidated, normalizeActionForReview, actionSha256, ReviewerPromptSizeError } from '../action/metadata.ts';
+import { hasLearnedApproval, rememberLearnedApproval } from '../approvals/store.ts';
+import { decorateReview, outputFailure, parseReviewerOutput, reviewerUnavailable } from '../action/review-result.ts';
+import { deterministicHighSensitivityHazards, verifySafeRead, learnedApprovalBlockers, applyDeterministicPolicy } from '../policy/policy.ts';
+import { AppServerReviewError, runCodexAppServer, managedAuthAvailable } from '../runtime/app-server-client.ts';
+import { createReviewScheduler, ReviewSchedulingError, withReviewDeadline } from './scheduler.ts';
 
 // Only trusted in-process composition can configure adapters, never MCP input.
 export function createReviewService({

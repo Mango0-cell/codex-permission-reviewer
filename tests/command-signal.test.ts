@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { hasNonOverridableCommandSignal as signal, hasUnlearnableCommandMutation as mutation } from '../src/policy/command-signals.js';
+import { hasNonOverridableCommandSignal as signal, hasUnlearnableCommandMutation as mutation } from '../src/policy/command-signals.ts';
 
 for (const command of [
   'docker run --rm --read-only --tmpfs /scratch:rw alpine id',

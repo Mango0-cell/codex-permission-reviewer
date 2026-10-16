@@ -1,8 +1,8 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { Stats } from "node:fs";
-import type { ExecutableIdentity, SafeItem, ReviewState, UnknownRecord, AppServerOptions } from "./protocol-types.js";
-import { APP_SERVER_MODEL, APP_SERVER_EFFORT, DEFAULT_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_LINE_BYTES, MAX_APP_SERVER_STDOUT_BYTES, MAX_APP_SERVER_STDERR_BYTES, MAX_APP_SERVER_MESSAGE_BYTES } from "./config.js";
-export * from "./config.js";
+import type { ExecutableIdentity, SafeItem, ReviewState, UnknownRecord, AppServerOptions } from "./protocol-types.ts";
+import { APP_SERVER_MODEL, APP_SERVER_EFFORT, DEFAULT_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_TIMEOUT_MS, MAX_APP_SERVER_LINE_BYTES, MAX_APP_SERVER_STDOUT_BYTES, MAX_APP_SERVER_STDERR_BYTES, MAX_APP_SERVER_MESSAGE_BYTES } from "./config.ts";
+export * from "./config.ts";
 import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
 import { chmod, lstat, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";

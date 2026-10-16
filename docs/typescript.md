@@ -9,11 +9,15 @@ Types do not replace runtime checks of untrusted input or create authorizations.
 
 ## One source, one artifact
 
-TypeScript imports name their emitted .js files so Node can execute the output
-without extension rewriting or a runtime loader. Type-only imports erase cleanly
-and stay within the same domain dependency boundaries. Source maps embed original
-source and declarations accompany the public API. No runtime code uses any,
-ts-ignore or ts-nocheck to silence a compiler failure.
+TypeScript source uses relative `.ts` module specifiers. The
+`rewriteRelativeImportExtensions` compiler option rewrites these to their `.js`
+counterparts in emitted JavaScript, so Node can execute the build without a
+runtime loader. The compiler rewrites module specifiers, not arbitrary strings:
+runtime paths, generated launcher contents, and package specifiers keep their
+actual runtime names. Type-only imports erase cleanly and stay within the same
+domain dependency boundaries. Source maps embed original source and declarations
+accompany the public API. No runtime code uses any, ts-ignore or ts-nocheck to
+silence a compiler failure.
 
 npm run build cleans dist/, compiles the source/tests and generates the existing
 bin/cli.mjs, scripts/server.mjs and scripts/app-server-client.mjs compatibility

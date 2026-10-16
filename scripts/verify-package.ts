@@ -22,6 +22,19 @@ try {
   const manifest = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8')) as { bin: Record<string, string>; types: string };
   await access(join(installed, manifest.types));
   await assert.rejects(access(join(temporary, 'node_modules/typescript')), { code: 'ENOENT' });
+  const consumer = join(temporary, 'consumer.mts');
+  await writeFile(consumer, [
+    "import { TOOL_NAME } from 'codex-permission-reviewer';",
+    "import type { ActionInput, ReviewResult } from 'codex-permission-reviewer';",
+    'const name: string = TOOL_NAME;',
+    'type PublicTypes = [ActionInput, ReviewResult];',
+    'void name;',
+  ].join('\n'));
+  run(process.execPath, [
+    join(process.cwd(), 'node_modules/typescript/bin/tsc'),
+    '--ignoreConfig', '--strict', '--noEmit', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
+    '--target', 'ES2022', '--types', 'node', '--typeRoots', join(process.cwd(), 'node_modules/@types'), consumer,
+  ], { cwd: temporary });
   const cli = join(installed, manifest.bin['codex-permission-reviewer']!);
   assert.match(run(process.execPath, [cli, '--help']), /Usage:/u);
   const requests = [
@@ -64,7 +77,7 @@ try {
       'github:adriancho91s/codex-permission-reviewer#v0.3.0', 'mcp',
     ]);
   }
-  const legacy = await import(pathToFileURL(join(installed, 'scripts/server.mjs')).href) as typeof import('./server.js');
+  const legacy = await import(pathToFileURL(join(installed, 'scripts/server.mjs')).href) as typeof import('./server.ts');
   assert.equal(legacy.TOOL_NAME, 'review_sensitive_action');
   process.stdout.write('Installed archive: CLI, MCP, isolated installer, legacy imports and declarations passed without runtime TypeScript.\n');
 } finally {

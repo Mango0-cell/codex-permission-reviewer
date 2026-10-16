@@ -1,7 +1,7 @@
-import type { NormalizedAction, Review, ReviewResult } from "./types.js";
-import { MAX_OUTPUT_BYTES, REVIEW_TTL_MS, MAX_OUTPUT_RATIONALE_LENGTH, MAX_OUTPUT_HAZARDS, MAX_OUTPUT_HAZARD_LENGTH, MAX_OUTPUT_ALTERNATIVE_LENGTH } from '../config.js';
-import { OUTPUT_KEYS, OUTPUT_VERDICTS, OUTPUT_RISK_LEVELS } from './contracts.js';
-import { isPlainObject, boundedText, redactSecrets, actionSha256 } from './metadata.js';
+import type { NormalizedAction, Review, ReviewResult } from "./types.ts";
+import { MAX_OUTPUT_BYTES, REVIEW_TTL_MS, MAX_OUTPUT_RATIONALE_LENGTH, MAX_OUTPUT_HAZARDS, MAX_OUTPUT_HAZARD_LENGTH, MAX_OUTPUT_ALTERNATIVE_LENGTH } from '../config.ts';
+import { OUTPUT_KEYS, OUTPUT_VERDICTS, OUTPUT_RISK_LEVELS } from './contracts.ts';
+import { isPlainObject, boundedText, redactSecrets, actionSha256 } from './metadata.ts';
 
 function sanitizeReviewText(value: unknown, maxLength: number, fallback = "") {
   const text = typeof value === "string" ? value : fallback;
