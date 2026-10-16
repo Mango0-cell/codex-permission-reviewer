@@ -61,22 +61,25 @@ and [FAQ on release commits and tags](https://semantic-release.gitbook.io/semant
 
 ## Preview and recovery
 
-The release-only Node 24 fixture `node dist/.github/release/verify-release-tooling.js`
-loads the configured plugins and runs semantic-release `--dry-run --no-ci` in a
-disposable local bare Git repository. It uses a `v0.3.0` baseline, a synthetic
-breaking commit, and a local config containing only the analyzer and notes
-generator. A Git URL rewrite points the repository URL at the local bare remote;
-the fixture never contacts GitHub or includes the GitHub publishing plugin in
-that dry run. It asserts the candidate version and breaking notes.
+The Node 24 release-validation job runs on pull requests and pushes with
+read-only contents permission and no publishing token. Its
+`node dist/.github/release/verify-release-tooling.js` fixture loads the
+configured plugins and runs semantic-release `--dry-run --no-ci` in a disposable
+local bare Git repository. It uses a `v0.3.0` baseline, a synthetic breaking
+commit, and a local config containing only the analyzer and notes generator. A
+Git URL rewrite points the repository URL at the local bare remote; the fixture
+never contacts GitHub or includes the GitHub publishing plugin in that dry run.
+It asserts the candidate version and breaking notes.
 
 ```sh
 node .github/release/node_modules/semantic-release/bin/semantic-release.js --dry-run --no-ci
 ```
 
 This previews the candidate version and release notes without publishing. The
-dry run does not prove GitHub asset upload. A separate release-only smoke clones
-the source to a temporary directory, runs the real prepare hook with a synthetic
-next patch version, builds and packs that version, installs the resulting archive
+dry run does not prove GitHub asset upload. A second release-validation fixture
+clones the source to a temporary directory, loads the configured prepare plugin
+through semantic-release's actual normalizer, runs it with a synthetic next
+patch version, builds and packs that version, installs the resulting archive
 into a temporary consumer, and confirms the installed MCP runtime reports the
 same version. A matrix fixture also performs a source-Git npm install with root
 development dependencies only, proving that Git-based installs do not require

@@ -172,7 +172,7 @@ function assertPackResult(stdout: string, version: string): string {
 }
 
 /** semantic-release prepare hook: verify, build and archive the synchronized source. */
-export async function prepare(context: ReleaseContext): Promise<void> {
+export async function prepare(_pluginOptions: unknown, context: ReleaseContext): Promise<void> {
   const root = resolve(context.cwd);
   await synchronizeReleaseMetadata(root, context.nextRelease.version);
   await runNpm(root, ["run", "check"]);

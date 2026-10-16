@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { MCP_PROTOCOL_VERSION } from "../../src/config.ts";
 import { PACKAGE_VERSION } from "../../src/version.ts";
 
@@ -11,7 +12,29 @@ interface PrepareContext {
   nextRelease: { version: string };
 }
 
-type PrepareHook = (context: PrepareContext) => Promise<void>;
+interface FixtureLogger {
+  scopeName: string;
+  scope(name: string, pluginName?: string): FixtureLogger;
+  log(...values: unknown[]): void;
+  success(...values: unknown[]): void;
+  warn(...values: unknown[]): void;
+  error(...values: unknown[]): void;
+}
+
+interface PreparePluginContext extends PrepareContext {
+  options: { dryRun: boolean };
+  stdout: NodeJS.WriteStream;
+  stderr: NodeJS.WriteStream;
+  logger: FixtureLogger;
+}
+
+type PreparePluginValidator = (context: PreparePluginContext) => Promise<void>;
+type NormalizePlugin = (
+  context: Pick<PreparePluginContext, "cwd" | "stdout" | "stderr" | "logger"> & { options: { dryRun: boolean } },
+  type: "prepare",
+  plugin: string,
+  pluginsPath: Record<string, string>,
+) => Promise<PreparePluginValidator>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -58,12 +81,40 @@ try {
   run("git", ["clone", "--quiet", "--no-hardlinks", root, source]);
   run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: source, env: environment });
 
-  const hookModule: unknown = await import(resolve(root, "dist/.github/release/prepare.js"));
-  if (!isRecord(hookModule) || typeof hookModule.prepare !== "function") {
-    throw new TypeError("The built release preparation hook must export prepare().");
+  const config = JSON.parse(await readFile(resolve(root, ".releaserc.json"), "utf8")) as {
+    plugins: (string | [string, Record<string, unknown>])[];
+  };
+  const preparePlugin = config.plugins.find(plugin => typeof plugin === "string" && plugin.endsWith("/dist/.github/release/prepare.js"));
+  if (typeof preparePlugin !== "string") throw new Error("Release config must register the typed prepare plugin.");
+  const normalizerUrl = pathToFileURL(resolve(root, ".github/release/node_modules/semantic-release/lib/plugins/normalize.js")).href;
+  const normalizerModule: unknown = await import(normalizerUrl);
+  if (!isRecord(normalizerModule) || typeof normalizerModule.default !== "function") {
+    throw new TypeError("The pinned semantic-release plugin normalizer must export a default function.");
   }
-  const prepare = hookModule.prepare as PrepareHook;
-  await prepare({ cwd: source, nextRelease: { version: nextVersion } });
+  const logger: FixtureLogger = {
+    scopeName: "release-smoke",
+    scope: () => logger,
+    log: () => undefined,
+    success: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+  };
+  const normalizePlugin = normalizerModule.default as NormalizePlugin;
+  const plugin = await normalizePlugin({
+    cwd: root,
+    stdout: process.stdout,
+    stderr: process.stderr,
+    options: { dryRun: false },
+    logger,
+  }, "prepare", preparePlugin, {});
+  await plugin({
+    cwd: source,
+    nextRelease: { version: nextVersion },
+    options: { dryRun: false },
+    stdout: process.stdout,
+    stderr: process.stderr,
+    logger,
+  });
 
   const archive = join(source, ".release-artifacts", `codex-permission-reviewer-${nextVersion}.tgz`);
   await access(archive);
