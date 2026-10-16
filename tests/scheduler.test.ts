@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createReviewScheduler } from '../src/review/scheduler.js';
+import { createReviewScheduler } from '../src/review/scheduler.ts';
 
 test('completion frees scheduler capacity before a caller schedules more work', async () => {
   const scheduler = createReviewScheduler();

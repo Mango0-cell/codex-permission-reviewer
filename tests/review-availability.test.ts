@@ -1,10 +1,10 @@
-import type { NormalizedAction } from "../src/action/types.js";
-import type { ReviewAdapters } from "../src/review/types.js";
+import type { NormalizedAction } from "../src/action/types.ts";
+import type { ReviewAdapters } from "../src/review/types.ts";
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createReviewService } from '../src/review/service.js';
-import { AppServerReviewError } from '../src/runtime/app-server-client.js';
-import { action, allow } from './helpers.js';
+import { createReviewService } from '../src/review/service.ts';
+import { AppServerReviewError } from '../src/runtime/app-server-client.ts';
+import { action, allow } from './helpers.ts';
 
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;

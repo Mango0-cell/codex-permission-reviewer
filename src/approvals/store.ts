@@ -1,11 +1,11 @@
-import type { NormalizedAction } from "../action/types.js";
+import type { NormalizedAction } from "../action/types.ts";
 interface LearnedApproval { digest: string; expiresAtMs: number; approvedAtMs?: number }
 import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
-import { LEARNED_APPROVAL_TTL_MS, MAX_LEARNED_APPROVALS, LEARNED_APPROVAL_POLICY_VERSION, LEARNED_APPROVAL_STATE_FILENAME } from '../config.js';
-import { isPlainObject, canonicalActionJson } from '../action/metadata.js';
+import { LEARNED_APPROVAL_TTL_MS, MAX_LEARNED_APPROVALS, LEARNED_APPROVAL_POLICY_VERSION, LEARNED_APPROVAL_STATE_FILENAME } from '../config.ts';
+import { isPlainObject, canonicalActionJson } from '../action/metadata.ts';
 
 function learnedApprovalSha256(action: NormalizedAction) {
   return createHash("sha256")

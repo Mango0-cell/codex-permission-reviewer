@@ -1,8 +1,8 @@
-import type { ActionFlag, NormalizedAction, OperationKind, Reversibility, UserAuthorization, Validation } from "./types.js";
+import type { ActionFlag, NormalizedAction, OperationKind, Reversibility, UserAuthorization, Validation } from "./types.ts";
 import { createHash } from "node:crypto";
 import { isAbsolute } from "node:path";
-import { MAX_PROMPT_CHARS, MAX_OPERATION_KIND_LENGTH, MAX_COMMAND_LENGTH, MAX_CWD_LENGTH, MAX_REASON_LENGTH, MAX_SIDE_EFFECT_LENGTH, MAX_FILE_TARGET_LENGTH, MAX_WORKSPACE_ROOT_LENGTH, MAX_FLAG_DETAIL_LENGTH, MAX_SIDE_EFFECTS, MAX_FILE_TARGETS, MAX_WORKSPACE_ROOTS, MAX_FLAG_DETAILS, MAX_CANONICAL_ACTION_BYTES } from '../config.js';
-import { OPERATION_KINDS, REVERSIBILITY_VALUES, USER_AUTHORIZATION_VALUES, ACTION_KEYS, FLAG_KEYS, REVIEWER_INSTRUCTIONS } from './contracts.js';
+import { MAX_PROMPT_CHARS, MAX_OPERATION_KIND_LENGTH, MAX_COMMAND_LENGTH, MAX_CWD_LENGTH, MAX_REASON_LENGTH, MAX_SIDE_EFFECT_LENGTH, MAX_FILE_TARGET_LENGTH, MAX_WORKSPACE_ROOT_LENGTH, MAX_FLAG_DETAIL_LENGTH, MAX_SIDE_EFFECTS, MAX_FILE_TARGETS, MAX_WORKSPACE_ROOTS, MAX_FLAG_DETAILS, MAX_CANONICAL_ACTION_BYTES } from '../config.ts';
+import { OPERATION_KINDS, REVERSIBILITY_VALUES, USER_AUTHORIZATION_VALUES, ACTION_KEYS, FLAG_KEYS, REVIEWER_INSTRUCTIONS } from './contracts.ts';
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);

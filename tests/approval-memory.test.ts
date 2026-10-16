@@ -3,9 +3,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { normalizeActionForReview } from '../src/action/metadata.js';
-import { hasLearnedApproval, rememberLearnedApproval } from '../src/approvals/store.js';
-import { action } from './helpers.js';
+import { normalizeActionForReview } from '../src/action/metadata.ts';
+import { hasLearnedApproval, rememberLearnedApproval } from '../src/approvals/store.ts';
+import { action } from './helpers.ts';
 
 test('approval memory retrieves exact scopes and rejects expired, malformed and changed scopes', async () => {
   const home = await mkdtemp(join(tmpdir(), 'reviewer-memory-'));

@@ -3,11 +3,11 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createReviewService } from '../src/review/service.js';
-import { validateProposedAction } from '../src/action/metadata.js';
-import { explicitAuthorizationBlockers, learnedApprovalBlockers } from '../src/policy/policy.js';
-import { action, allow } from './helpers.js';
-import { rememberLearnedApproval } from '../src/approvals/store.js';
+import { createReviewService } from '../src/review/service.ts';
+import { validateProposedAction } from '../src/action/metadata.ts';
+import { explicitAuthorizationBlockers, learnedApprovalBlockers } from '../src/policy/policy.ts';
+import { action, allow } from './helpers.ts';
+import { rememberLearnedApproval } from '../src/approvals/store.ts';
 
 for (const verdict of ['allow', 'deny', 'needs_user']) {
   test(`explicit authorization preserves model ${verdict}`, async () => {

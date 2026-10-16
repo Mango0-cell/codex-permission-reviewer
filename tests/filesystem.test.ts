@@ -3,8 +3,8 @@ import { chmod, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createReviewService } from '../src/review/service.js';
-import { action, allow } from './helpers.js';
+import { createReviewService } from '../src/review/service.ts';
+import { action, allow } from './helpers.ts';
 
 test('trusted read cache rechecks changed files, symlinks, binary and executable targets', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cpr-read-'));

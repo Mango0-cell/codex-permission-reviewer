@@ -1,4 +1,4 @@
-import type { ActionInput, Review } from "../src/action/types.js";
+import type { ActionInput, Review } from "../src/action/types.ts";
 
 export const allow: Review = { verdict: 'allow', riskLevel: 'low', rationale: 'Reviewed.', detectedHazards: [], saferAlternative: '' };
 export function action(overrides: Partial<ActionInput> & Record<string, unknown> = {}): ActionInput & Record<string, unknown> {

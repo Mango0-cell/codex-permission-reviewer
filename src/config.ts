@@ -1,4 +1,4 @@
-import { APP_SERVER_MODEL, APP_SERVER_EFFORT } from './runtime/config.js';
+import { APP_SERVER_MODEL, APP_SERVER_EFFORT } from './runtime/config.ts';
 
 export const TOOL_NAME = "review_sensitive_action";
 export const MCP_PROTOCOL_VERSION = "2026-07-28";

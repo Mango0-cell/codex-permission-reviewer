@@ -1,13 +1,13 @@
 import type { Stats } from "node:fs";
 import type { FileHandle } from "node:fs/promises";
-import type { NormalizedAction, Review, FileVerification } from "../action/types.js";
-import { hasNonOverridableCommandSignal, hasUnlearnableCommandMutation } from "./command-signals.js";
+import type { NormalizedAction, Review, FileVerification } from "../action/types.ts";
+import { hasNonOverridableCommandSignal, hasUnlearnableCommandMutation } from "./command-signals.ts";
 import { O_NOFOLLOW, O_RDONLY } from "node:constants";
 import { lstat, open, realpath } from "node:fs/promises";
 import { basename, delimiter, extname, isAbsolute, relative, resolve, sep } from "node:path";
-import { TRUSTED_ROOTS_ENV, MAX_WORKSPACE_ROOT_LENGTH, MAX_WORKSPACE_ROOTS, MAX_SAFE_READ_TARGETS, MAX_SAFE_READ_SAMPLE_BYTES } from '../config.js';
-import { isCanonicalAction, normalizeActionForReview } from '../action/metadata.js';
-import { sanitizeReviewOutput } from '../action/review-result.js';
+import { TRUSTED_ROOTS_ENV, MAX_WORKSPACE_ROOT_LENGTH, MAX_WORKSPACE_ROOTS, MAX_SAFE_READ_TARGETS, MAX_SAFE_READ_SAMPLE_BYTES } from '../config.ts';
+import { isCanonicalAction, normalizeActionForReview } from '../action/metadata.ts';
+import { sanitizeReviewOutput } from '../action/review-result.ts';
 
 const SAFE_READ_EXTENSIONS = new Set([
   ".adoc",

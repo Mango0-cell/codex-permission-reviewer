@@ -3,10 +3,10 @@ import { execFileSync } from 'node:child_process';
 import { readdir, readFile, access, realpath } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import test from 'node:test';
-import * as legacy from '../scripts/server.js';
-import * as legacyClient from '../scripts/app-server-client.js';
-import * as client from '../src/runtime/app-server-client.js';
-import { reviewSensitiveAction } from '../src/review/service.js';
+import * as legacy from '../scripts/server.ts';
+import * as legacyClient from '../scripts/app-server-client.ts';
+import * as client from '../src/runtime/app-server-client.ts';
+import { reviewSensitiveAction } from '../src/review/service.ts';
 
 async function files(directory: string): Promise<string[]> {
   const result = [];
@@ -48,6 +48,17 @@ test('runtime domain dependencies are acyclic and stay inside declared boundarie
     visiting.delete(path); visited.add(path);
   }
   for (const path of graph.keys()) visit(path);
+});
+
+test('relative TypeScript module specifiers name source files', async () => {
+  for (const root of ['src', 'bin', 'scripts', 'tests']) {
+    for (const path of (await files(root)).filter(path => path.endsWith('.ts'))) {
+      const source = await readFile(path, 'utf8');
+      assert.doesNotMatch(source, /^\s*(?:import|export)\b[^\n]*\bfrom\s*["']\.{1,2}\/[^"']+\.js["']/gmu, `${path}: imports and re-exports must use source .ts extensions`);
+      assert.doesNotMatch(source, /^\s*import\s*["']\.{1,2}\/[^"']+\.js["']/gmu, `${path}: side-effect imports must use source .ts extensions`);
+      assert.doesNotMatch(source, /\btypeof\s+import\s*\(\s*["']\.{1,2}\/[^"']+\.js["']/gu, `${path}: import type queries must use source .ts extensions`);
+    }
+  }
 });
 
 test('every maintained domain and subdirectory has an AGENTS.md specification', async () => {

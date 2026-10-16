@@ -1,12 +1,12 @@
-import type { ReviewResult } from "../action/types.js";
+import type { ReviewResult } from "../action/types.ts";
 interface McpContext {
   protocolVersion: string; initialized: boolean; pendingRequests: Map<string, AbortController>;
   activeTasks: Set<Promise<void>>; stopping: boolean; shutdownRequested: boolean; stop(): void;
 }
-import { TOOL_NAME, MCP_PROTOCOL_VERSION, SUPPORTED_MCP_PROTOCOL_VERSIONS, MAX_REQUEST_BYTES } from '../config.js';
-import { TOOL_DEFINITION } from '../action/contracts.js';
-import { isPlainObject, validateProposedAction } from '../action/metadata.js';
-import { reviewSensitiveAction } from '../review/service.js';
+import { TOOL_NAME, MCP_PROTOCOL_VERSION, SUPPORTED_MCP_PROTOCOL_VERSIONS, MAX_REQUEST_BYTES } from '../config.ts';
+import { TOOL_DEFINITION } from '../action/contracts.ts';
+import { isPlainObject, validateProposedAction } from '../action/metadata.ts';
+import { reviewSensitiveAction } from '../review/service.ts';
 
 function jsonRpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
