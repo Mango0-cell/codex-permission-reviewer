@@ -21,6 +21,8 @@ Requires **Node.js 20+** and **Codex 0.147+**.
 npx -y github:adriancho91s/codex-permission-reviewer#v0.4.0 install
 ```
 
+Prefer a local package? [Download the prebuilt archive from the latest release](https://github.com/adriancho91s/codex-permission-reviewer/releases/latest).
+
 Start a new Codex thread after installation so it loads the skill and MCP tool.
 
 ## How it works
@@ -38,9 +40,12 @@ flowchart LR
     C --> E[Needs your confirmation]
     C --> F[Deny]
     D --> G[Host policy and approval still apply]
-    E --> H[Fresh review of the exact action]
-    H --> G
-    F --> I[Do not proceed]
+    E --> H[Human confirms exact action]
+    H --> I[Fresh review may allow, ask again, or deny]
+    I --> D
+    I --> E
+    I --> F
+    F --> J[Do not proceed]
 ```
 
 | Situation | What to expect |
@@ -114,8 +119,9 @@ can require fresh confirmation and a new review of the exact scope. Some risks
 remain blocked or require fresh review, including force pushes and unleased
 history rewrites, broad destructive SQL, broad or recursive filesystem
 operations, authorization bypass, ambiguous targets, and download-and-execute
-pipelines. Destructive actions are excluded from approval learning and require
-fresh review.
+pipelines. High-risk or sensitive-data operations, non-reversible actions, and
+recognized common file or row mutations are excluded from approval learning and
+require a fresh review.
 
 The plugin is a bounded advisory layer, not a shell or SQL interpreter. It
 recognizes common command patterns, but cannot resolve every alias, variable,
@@ -159,8 +165,8 @@ to their own managed account and configures their own trusted workspace roots.
 
 For workspace distribution, an admin can publish from ChatGPT
 **Plugins → Personal → Publish**, review the package and local MCP boundary,
-and choose installation and role access. Publishing does not install the
-package or assign it to roles by itself.
+and choose installation and role access. The local install workflow does not
+publish the plugin or set workspace role access.
 
 Busy, timeout, or child-availability failures return `needs_user` with
 `reviewStatus: "unavailable"`; they never grant permission. A caller may retry
