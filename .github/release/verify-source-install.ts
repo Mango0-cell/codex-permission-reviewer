@@ -4,7 +4,8 @@ import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { PACKAGE_VERSION } from "../../src/version.js";
+import { MCP_PROTOCOL_VERSION } from "../../src/config.ts";
+import { PACKAGE_VERSION } from "../../src/version.ts";
 
 function run(command: string, args: string[], options: { cwd?: string; input?: string; env?: NodeJS.ProcessEnv } = {}): string {
   const result = spawnSync(command, args, {
@@ -63,7 +64,7 @@ try {
     id: 1,
     method: "initialize",
     params: {
-      protocolVersion: "2025-03-26",
+      protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {},
       clientInfo: { name: "source-install-fixture", version: "1.0.0" },
     },

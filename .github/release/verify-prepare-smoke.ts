@@ -3,7 +3,8 @@ import { spawnSync } from "node:child_process";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { PACKAGE_VERSION } from "../../src/version.js";
+import { MCP_PROTOCOL_VERSION } from "../../src/config.ts";
+import { PACKAGE_VERSION } from "../../src/version.ts";
 
 interface PrepareContext {
   cwd: string;
@@ -95,7 +96,7 @@ try {
     id: 1,
     method: "initialize",
     params: {
-      protocolVersion: "2025-03-26",
+      protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {},
       clientInfo: { name: "versioned-archive-fixture", version: "1.0.0" },
     },
