@@ -38,6 +38,11 @@ The installer copies only the bundled permission-review skill into your own
 npx -y github:adriancho91s/codex-permission-reviewer#v0.3.0 mcp
 ```
 
+Each GitHub Release also includes a prebuilt `.tgz` package archive for local or
+offline installation. The archive is built and tested from the same versioned
+source tag; releases are hosted on GitHub and are not published to the npm
+registry.
+
 It does not read or copy Codex authentication. The MCP process uses your
 existing managed Codex login at runtime. Existing differing skill content is
 not overwritten unless you rerun the installer with `--force` after reviewing

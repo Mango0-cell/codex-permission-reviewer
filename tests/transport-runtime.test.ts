@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import test from 'node:test';
 import { readBoundedLines } from '../src/transport/mcp.ts';
 import { buildMinimalChildEnvironment, appServerConfigText, buildAppServerRequests } from '../src/runtime/app-server-client.ts';
+import { PACKAGE_VERSION } from '../src/version.ts';
 
 test('MCP rejects pre-initialize tool access and negotiates protocol through stable launcher', async () => {
   const child = spawn(process.execPath, ['scripts/server.mjs'], { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -20,6 +21,7 @@ test('MCP rejects pre-initialize tool access and negotiates protocol through sta
   const replies = new Map(stdout.trim().split('\n').map(line => { const value = JSON.parse(line); return [value.id, value]; }));
   assert.equal(replies.get(1).error.code, -32002);
   assert.equal(replies.get(2).result.protocolVersion, '2025-06-18');
+  assert.equal(replies.get(2).result.serverInfo.version, PACKAGE_VERSION);
   assert.equal(replies.get(3).result.tools[0].name, 'review_sensitive_action');
   assert.equal(replies.get(4).result.structuredContent.verdict, 'deny');
 });
@@ -40,5 +42,7 @@ test('runtime composition preserves no-tools configuration and filters inherited
   assert.match(config, /shell_tool = false/u);
   assert.match(config, /enabled = false/u);
   const requests = buildAppServerRequests({ cwd: '/tmp/isolated', prompt: 'Review fixture', outputSchema: { type: 'object' } });
+  const initializeParams = requests.initialize.params as { clientInfo: { version: string } };
+  assert.equal(initializeParams.clientInfo.version, PACKAGE_VERSION);
   assert.ok(requests);
 });

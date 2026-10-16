@@ -16,6 +16,7 @@ plugin-state/
 learned-approvals.json
 coverage/
 dist/
+.release-artifacts/
 tmp/
 *.log
 

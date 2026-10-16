@@ -1,0 +1,47 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    [
+      "./.github/release/node_modules/@semantic-release/commit-analyzer",
+      { "preset": "conventionalcommits" }
+    ],
+    [
+      "./.github/release/node_modules/@semantic-release/release-notes-generator",
+      { "preset": "conventionalcommits" }
+    ],
+    "./dist/.github/release/prepare.js",
+    [
+      "./.github/release/node_modules/@semantic-release/git",
+      {
+        "assets": [
+          "package.json",
+          "package-lock.json",
+          ".codex-plugin/plugin.json",
+          "src/version.ts",
+          "README.md"
+        ],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "./.github/release/node_modules/@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": ".release-artifacts/codex-permission-reviewer-*.tgz",
+            "label": "Installable package archive"
+          }
+        ],
+        "successComment": false,
+        "successCommentCondition": false,
+        "failComment": false,
+        "failCommentCondition": false,
+        "labels": false,
+        "releasedLabels": false,
+        "addReleases": false,
+        "discussionCategoryName": false
+      }
+    ]
+  ]
+}

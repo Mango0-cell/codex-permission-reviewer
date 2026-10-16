@@ -29,6 +29,7 @@
     "src/**/*.ts",
     "bin/**/*.ts",
     "scripts/**/*.ts",
+    ".github/release/**/*.ts",
     "tests/**/*.ts"
   ],
   "exclude": [

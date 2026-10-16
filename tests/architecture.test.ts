@@ -11,6 +11,7 @@ import { reviewSensitiveAction } from '../src/review/service.ts';
 async function files(directory: string): Promise<string[]> {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && ['node_modules', 'dist'].includes(entry.name)) continue;
     const path = `${directory}/${entry.name}`;
     if (entry.isDirectory()) result.push(...await files(path)); else result.push(path);
   }
@@ -22,7 +23,7 @@ test('runtime domain dependencies are acyclic and stay inside declared boundarie
     config: ['runtime/config.ts'], action: ['config', 'action'],
     approvals: ['config', 'action'], policy: ['config', 'action', 'policy'],
     review: ['config', 'action', 'approvals', 'policy', 'review', 'runtime'],
-    runtime: ['runtime'], transport: ['config', 'action', 'review', 'transport'],
+    runtime: ['runtime', 'version'], transport: ['config', 'action', 'review', 'transport', 'version'],
   };
   const graph = new Map<string, string[]>();
   for (const path of (await files('src')).filter(path => path.endsWith('.ts'))) {
@@ -33,7 +34,7 @@ test('runtime domain dependencies are acyclic and stay inside declared boundarie
       if (specifier.startsWith('node:')) continue;
       assert.ok(specifier.startsWith('.'), `${path}: unexpected external dependency ${specifier}`);
       const target = relative(process.cwd(), resolve(dirname(path), specifier)).replace(/\.js$/u, '.ts');
-      const targetDomain = target === 'src/config.ts' ? 'config' : target.split('/')[1]!;
+      const targetDomain = target === 'src/config.ts' ? 'config' : target === 'src/version.ts' ? 'version' : target.split('/')[1]!;
       assert.ok(allowed[domain]!.includes(targetDomain) || (domain === 'config' && target === 'src/runtime/config.ts'), `${path} cannot depend on ${target}`);
       edges.push(target);
     }
