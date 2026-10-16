@@ -23,6 +23,21 @@ jobs:
       - run: npm test
       - run: npm run test:package
       - run: node dist/.github/release/verify-source-install.js
+  windows-approval-memory:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run build
+      - run: node --test dist/tests/approval-memory.test.js
   release-validation:
     needs: test
     runs-on: ubuntu-latest
@@ -44,7 +59,7 @@ jobs:
         run: node dist/.github/release/verify-prepare-smoke.js
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test, release-validation]
+    needs: [test, windows-approval-memory, release-validation]
     runs-on: ubuntu-latest
     permissions:
       contents: write

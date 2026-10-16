@@ -154,9 +154,19 @@ test("release tooling stays isolated and GitHub-only with no issue or registry w
     assert.equal(githubOptions[key], false, `GitHub release option ${key} must not write issues, PRs or discussions`);
   }
   const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+  const windowsStart = workflow.indexOf("  windows-approval-memory:\n");
   const validationStart = workflow.indexOf("  release-validation:\n");
   const releaseStart = workflow.indexOf("  release:\n", validationStart);
+  assert.ok(windowsStart >= 0 && windowsStart < validationStart, "Windows approval-memory validation must be a separate CI job");
   assert.ok(validationStart >= 0 && releaseStart > validationStart, "release validation must be a separate CI job");
+  const windowsJob = workflow.slice(windowsStart, validationStart);
+  assert.match(windowsJob, /runs-on: windows-latest\n/u);
+  assert.match(windowsJob, /permissions:\n      contents: read\n/u);
+  assert.match(windowsJob, /node-version: 20\.x\n/u);
+  assert.match(windowsJob, /npm ci --ignore-scripts/u);
+  assert.match(windowsJob, /npm run build/u);
+  assert.match(windowsJob, /node --test dist\/tests\/approval-memory\.test\.js/u);
+  assert.match(windowsJob, /persist-credentials: false/u);
   const validationJob = workflow.slice(validationStart, releaseStart);
   assert.match(validationJob, /needs: test\n/u);
   assert.match(validationJob, /permissions:\n      contents: read\n/u);
@@ -165,7 +175,7 @@ test("release tooling stays isolated and GitHub-only with no issue or registry w
   const toolingInstall = validationJob.indexOf("npm ci --prefix .github/release");
   const prepareSmoke = validationJob.indexOf("verify-prepare-smoke.js");
   assert.ok(toolingInstall >= 0 && prepareSmoke > toolingInstall, "prepare smoke must use the pinned release tooling");
-  assert.match(workflow.slice(releaseStart), /needs: \[test, release-validation\]/u);
+  assert.match(workflow.slice(releaseStart), /needs: \[test, windows-approval-memory, release-validation\]/u);
   assert.match(workflow, /fetch-depth: 0\s+persist-credentials: false/u);
   assert.match(workflow, /GIT_ASKPASS=/u);
   assert.match(workflow, /GIT_TERMINAL_PROMPT=0/u);
