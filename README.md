@@ -1,7 +1,7 @@
 # Codex Permission Reviewer
 
-`codex-permission-reviewer` is a Codex plugin that adds a conservative,
-advisory review before high-sensitivity actions. Its local
+`codex-permission-reviewer` adds a lightweight advisory check before actions
+that could cause meaningful damage or data loss. Its local
 `review_sensitive_action` MCP tool sends bounded, redacted metadata to an
 isolated child `codex app-server` using the managed ChatGPT/Codex account and
 the configured reviewer model and effort. The default is `gpt-5.6-luna` at
@@ -117,10 +117,11 @@ host review mechanism for this plugin's own advisory request.
 
 Every genuinely sensitive request declares `userAuthorization` as `none` or `explicit`. The caller
 may use `explicit` only when the user authorized that exact action in the active
-conversation. A fresh explicit configured-model review can allow a targeted production
-database change, deployment, credential/permission operation, or other exact
-sensitive action after informed confirmation. It cannot release plain force
-pushes or unleased history rewrites, broad destructive SQL, destructive filesystem commands,
+conversation. A fresh explicit configured-model review can allow a targeted
+single-file deletion, production database change, deployment,
+credential/permission operation, or other exact sensitive action after informed
+confirmation. It cannot release plain force pushes or unleased history rewrites,
+broad destructive SQL, broad or recursive destructive filesystem commands,
 authorization bypass, download-and-execute pipelines, broad targets, or
 ambiguous metadata. The field is part of the result digest, and explicit
 reviews are never served from the ordinary result cache.
@@ -131,6 +132,9 @@ targets, reasons, data, or secrets are stored. Production database/schema/data
 repair, credentials/permissions, process spawning, destructive operations,
 sensitive-data access, irreversible actions, history rewrites, and ambiguous
 actions are never learned and always require fresh confirmation.
+Common file and row mutation commands are also excluded from learning when the
+caller labels them as a generic command. This is a memory restriction; command
+review outcomes remain governed by the existing deterministic and model policy.
 
 Without explicit authorization, only a narrow, regular-file `file_read` can be
 automatically allowed, and only after deterministic high-sensitivity checks
@@ -144,19 +148,44 @@ not an atomic execution binding and does not eliminate TOCTOU risk.
 The MCP server supports protocol versions `2026-07-28`, `2025-06-18`, and
 `2024-11-05`,
 requires `initialize` before tool access, bounds streaming input/output, and
-fails closed on missing managed auth, malformed output, unexpected or embedded
+does not approve execution on missing managed auth, malformed output, unexpected or embedded
 raw/turn tool items, model/profile mismatch, timeout, or child failure. It uses one
-in-flight review, a rolling limit of five child reviews per 60 seconds, and a
-64-entry five-minute sanitized digest cache.
+in-flight child review with up to four pending requests, a rolling limit of five
+child reviews per 60 seconds, and a 64-entry five-minute sanitized LRU digest
+cache. Queue waiting and local reuse count toward the total request deadline.
+
+Busy/timeout/process availability failures return `needs_user` with
+`reviewStatus: "unavailable"`, `retryable`, and (when retryable) `retryAfterMs`.
+They never grant approval or become cached policy denials. Agents can continue
+independent work and retry the review query once within their remaining budget;
+the proposed sensitive action still waits. Missing auth requires setup help.
+Actual policy/model denials remain distinct and effective.
+
+Exact eligible sensitive actions without user authorization return `needs_user`.
+Human confirmation triggers a fresh explicit review; cached results never replace
+it. Full validated metadata is sent within the prompt bound. An oversized scope
+requires a narrower request rather than silently truncating evidence.
 
 ## Development and architecture
 
-Runtime code is organized into action, policy, approvals, review, runtime, and
-transport domains under `src/`. The existing `scripts/` paths remain stable
+Strict TypeScript source is organized into action, policy, approvals, review,
+runtime, and transport domains under `src/`. The existing `scripts/` paths remain stable
 launchers and compatibility imports. Each maintained directory has an
 `AGENTS.md` specification. See [the architecture and review notes](docs/architecture.md)
 for dependency boundaries, decision flow, and classifier limitations.
 
-Run `npm run check`, `npm test`, and `npm pack --dry-run` before submitting
-changes. Tests use fixture strings, temporary files, and trusted fake reviewer
-adapters; they do not execute proposed commands or require managed auth.
+Run `npm ci`, `npm run check`, `npm test`, `npm run test:package`, and
+`npm pack --dry-run` before submitting changes. Tests use fixture strings,
+temporary files, and trusted fake reviewer adapters; they do not execute
+proposed commands or require managed auth.
+
+Coding agents and human contributors should start with
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [maintenance map](docs/maintenance.md).
+Repository skills provide focused architecture, policy, runtime, commit, and PR
+expertise for both Codex and Claude Code; shared guides keep their engineering
+rules aligned.
+
+See [the TypeScript build and install contract](docs/typescript.md). Maintainers
+compile source once during build/pack; installed users run prebuilt JavaScript
+without a TypeScript compiler or transpilation loader. Existing `.mjs` launcher
+paths are generated compatibility shims, not separately maintained source.

@@ -3,3 +3,7 @@
 Own Node built-in tests. Test imported production functions, never extract regex text from source or execute destructive fixture strings. Use trusted dependency injection for model responses and temporary filesystem state. Restore process environment and remove fixture directories. Cover policy results, model verdict preservation, safe-read rechecks, protocol framing, compatibility exports, distribution, and architecture boundaries. No production auth reads or network calls.
 
 Validation: npm test on Node >=20.
+
+Maintain implementation and tests as strict TypeScript. Use type-only imports for
+contracts, validate untrusted values from unknown, and keep built JavaScript in
+dist/ or generated compatibility launchers. See docs/typescript.md at repo root.

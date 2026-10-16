@@ -2,8 +2,8 @@
 
 The runtime separates untrusted metadata, deterministic policy, local approval
 state, model execution, orchestration, and MCP I/O. Stable files in scripts/
-preserve installed plugin paths and the existing import API. No runtime package
-dependencies or build step are required.
+preserve installed plugin paths and the existing import API. Runtime dependencies remain Node built-ins; strict TypeScript is compiled during
+development/packaging, so consumers need no build tools.
 
 ```mermaid
 flowchart TD
@@ -19,8 +19,8 @@ flowchart TD
   Runtime --> Child[Ephemeral no-tools reviewer]
 ```
 
-Shared limits live in src/config.mjs. Model/effort configuration is a leaf module
-in src/runtime/config.mjs, so loading contracts does not load process-launch code.
+Shared limits live in src/config.ts. Model/effort configuration is a leaf module
+in src/runtime/config.ts, so loading contracts does not load process-launch code.
 The action and policy domains do not depend on orchestration or transport.
 Architecture tests reject cycles and imports outside these boundaries.
 
@@ -49,9 +49,11 @@ plugin, managed credentials, release tag, or published version is changed.
 2. Reject cancellation before consulting learned approvals or result cache.
 3. Consult eligible exact learned approvals; corrupt or unavailable state never
    grants permission. Explicit requests always require a fresh model review.
-4. Reverify cached safe reads against current filesystem state. Otherwise enforce
-   concurrency/rate limits and call the managed isolated reviewer.
-5. Strictly validate the response. Preserve deny and needs_user, including after
+4. Reverify cached safe reads against current filesystem state. Otherwise queue
+   bounded work behind one active child, recheck reuse after waiting, enforce the
+   rolling model-call budget, and call the managed isolated reviewer. A request's
+   deadline covers reuse, queue wait, auth, model work and policy checks.
+5. Strictly validate the complete response. Preserve deny and needs_user, including after
    explicit user authorization. Apply deterministic restrictions to model allow.
 6. Decorate the advisory result with its digest and timestamps. Persist only
    eligible successful explicit approvals, using hashes and timestamps.
@@ -96,6 +98,14 @@ flag inert examples such as echo 'rm -rf path'. Absence of a signal never grants
 permission: model review and other deterministic and host checks still apply.
 Recursive rm is blocked even without force. A literal -- ends option parsing.
 
+Learned-approval eligibility separately recognizes common `rm`, `unlink`,
+`rmdir`, `find -delete`, and SQL row-mutation command forms. This prevents a
+generic `command` operation label from making an exact destructive action
+reusable. That signal suppresses approval memory; it does not by itself block a
+fresh exact explicit review. The bounded tokenizer and SQL keyword checks are
+not complete shell or SQL interpreters and may conservatively flag inert nested
+text.
+
 Safe-read verification and action digests are advisory snapshots. They do not
 bind execution atomically or eliminate TOCTOU. The runtime adapter was relocated
 without changing its isolation protocol. Tests verify composition and selected
@@ -103,7 +113,55 @@ runtime contracts, not every failure path of a real Codex app-server process.
 
 ## Validation
 
-Run npm run check, npm test, npm pack --dry-run, and git diff --check. CI runs
-syntax, tests, and a package dry-run on Node 20, 22, and 24. Fixture commands remain
-strings; tests only launch the local MCP server with invalid metadata or use
-trusted fake model adapters and temporary filesystem/approval state.
+Run npm ci, npm run check, npm test, npm run test:package, npm pack --dry-run,
+and git diff --check. CI runs type checks, tests, and package validation on Node
+20, 22, and 24. Fixture commands remain strings; tests only launch the local MCP
+server with invalid metadata or use trusted fake model adapters and temporary
+filesystem/approval state.
+
+## Availability, answer completeness and human confirmation
+
+Review coordination uses a bounded FIFO executor in src/review/scheduler.ts and
+trusted runtime/storage adapters in src/review/service.ts. Four requests may
+wait behind one child. Each caller owns a deadline and AbortSignal. Cancellation
+removes queued work promptly; a running operation retains its slot through
+cleanup even after its caller stops waiting. This prevents overlapping children.
+Unrelated cached results remain usable while a model review is active.
+
+Queued unconfirmed duplicates can reuse a completed exact-scope result instead
+of spending another model call or rate token. Explicit confirmations always run
+fresh. Result cache access touches LRU order without extending original expiry;
+reads reverify the filesystem. Infrastructure failures are never cached.
+
+Availability responses keep verdict=needs_user and add host-owned
+reviewStatus=unavailable, retryable, and optional retryAfterMs. They do not approve
+execution or claim that a model rejected the action. Missing auth is not retryable
+without setup. Saturation, timeout and child failures permit a bounded retry of
+the review query. Malformed output/isolation failures still fail closed. No
+transparent retry, alternate model or weakened validation is used.
+
+For completed model allows without user authorization, exact actions that have
+no explicit-authorization blocker return needs_user with a fresh-confirmation
+path. Non-overridable hazards and actual model denials stay effective. Human
+confirmation is meaningful without becoming an unconditional policy override.
+
+Prompts now contain all validated metadata with per-value redaction and compact
+JSON, within the existing 24,000-character limit. The old builder silently
+shortened commands after 4,000 characters and omitted array entries. A digest
+could therefore describe more scope than the model saw. The builder now rejects
+oversized complete scope and requests narrowing before spending a model call.
+
+Coordination tests measure model-call counts and caller outcomes with fake
+adapters, not real inference latency or model quality. Child isolation, model and
+effort configuration, authorization boundaries, host approvals and execution-time
+TOCTOU limits remain as documented.
+
+## Typed implementation and generated launchers
+
+All maintained application code, CLI code and tests use TypeScript with strict
+checking, unchecked-index checks and explicit DTOs/adapters. Build output goes
+under dist/; public declarations are packaged with the JavaScript. The existing
+bin/cli.mjs and scripts/*.mjs paths are generated compatibility wrappers. They
+are ignored by Git and tested from an installed archive. See typescript.md for
+clean builds, npm prepare semantics and artifact validation. This migration does
+not add new approval policy or runtime model behavior.

@@ -1,14 +1,19 @@
 # Project specification
 
-This package is an advisory permission reviewer. It never executes a proposed
+This package is a lightweight advisory check for meaningful damage and data-loss risk.
+Routine engineering work stays in the normal host workflow; avoid extra prompts
+when exact task authorization already exists. It never executes a proposed
 command, grants host permissions, changes host policy, or replaces host approval.
 
 ## Architecture
 
 Read docs/architecture.md and the nearest AGENTS.md before changing a domain.
 Runtime source lives in src/; scripts/ preserves installed launcher/import paths.
-Use native Node.js ESM and built-in modules, targeting Node >=20. Keep runtime
-imports acyclic and domain dependencies enforced by tests/architecture.test.mjs.
+Maintain strict TypeScript targeting Node >=20 ESM with built-in runtime modules.
+TypeScript, Node typings and tests are development tooling; consumers run compiled
+JavaScript. Read docs/typescript.md before changing types, builds or packaging.
+Keep runtime imports acyclic and domain dependencies enforced by
+tests/architecture.test.ts.
 Each new domain and every new tracked subdirectory must include an AGENTS.md
 specifying ownership, dependencies, invariants, and relevant validation.
 
@@ -29,7 +34,31 @@ specifying ownership, dependencies, invariants, and relevant validation.
 
 ## Validation
 
-Run npm run check, npm test, npm pack --dry-run, and git diff --check. Changes to
-entrypoints or distribution must also preserve package contents, launcher paths,
-MCP schemas, and legacy exports. No release/version bump or installation is
-implied by a source refactor. Record behavior changes and limitations in docs.
+Run npm ci, npm run check, npm test, npm run test:package, npm pack --dry-run,
+and git diff --check. Changes to entrypoints or distribution must also preserve
+package contents, launcher paths, MCP schemas, and legacy exports. No
+release/version bump or installation is implied by a source refactor. Record
+behavior changes and limitations in docs.
+
+## Engineering navigation and scope
+
+Read docs/maintenance.md for the domain map, design-pattern choices, and expertise
+routes. Read docs/maintainers/engineering.md when writing code. Repository skills
+under .agents/skills/ cover architecture, policy, runtime, commits, and GitHub PRs;
+load the route relevant to the task. For Git history and PR work, read
+docs/maintainers/commits.md and docs/maintainers/pull-requests.md. Keep
+architecture/rules-only changes separate from behavioral fixes and performance
+changes unless the user explicitly requests a combined PR. A useful new
+abstraction has a concrete owner, a stable contract, and a demonstrated need;
+prefer explicit module calls over introducing frameworks or event buses. When
+TypeScript is present in the active source scope, use strict types, validate
+external data from unknown, and avoid any.
+
+## Typed source and distribution
+
+Maintain source and tests in .ts files with strict compiler checks and explicit
+module contracts. External JSON/process/persistence data starts as unknown and
+is narrowed by runtime validation. Do not suppress errors with any, ts-ignore or
+ts-nocheck. Generated .mjs launchers and dist/ JavaScript are build outputs, not
+parallel implementations. Type-only imports follow the same domain ownership
+as runtime imports. Build and smoke-test the artifact that will be distributed.
