@@ -120,8 +120,10 @@ remain blocked or require fresh review, including force pushes and unleased
 history rewrites, broad destructive SQL, broad or recursive filesystem
 operations, authorization bypass, ambiguous targets, and download-and-execute
 pipelines. High-risk or sensitive-data operations, non-reversible actions, and
-recognized common file or row mutations are excluded from approval learning and
-require a fresh review.
+Only eligible approvals are remembered; sensitive-data actions, non-reversible
+actions, and specified operation categories require fresh review. Deterministic
+policy still applies. See the [policy guide](docs/maintainers/policy.md) for the
+full eligibility rules.
 
 The plugin is a bounded advisory layer, not a shell or SQL interpreter. It
 recognizes common command patterns, but cannot resolve every alias, variable,
