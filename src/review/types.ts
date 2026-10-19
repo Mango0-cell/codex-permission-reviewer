@@ -5,4 +5,5 @@ export interface ReviewAdapters {
   authAvailable?: () => Promise<boolean>;
   runAppServer?: (prompt: string, options: AppServerOptions) => Promise<string>;
   approvalStore?: { has(action: NormalizedAction): Promise<boolean>; remember(action: NormalizedAction): Promise<void> };
+  dependencyPolicyHome?: string;
 }

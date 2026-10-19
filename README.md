@@ -124,6 +124,12 @@ operation categories cannot use approval memory; deterministic policy still
 applies. See the [policy guide](docs/maintainers/policy.md) for the full
 eligibility rules.
 
+An operator-controlled, exact-action manifest can identify verified executable
+dependencies under `node_modules` without treating the whole directory as safe.
+This requires a fresh model allow and explicit authorization, verifies file
+identity and hashes before and after review, and never uses approval memory.
+Credential paths remain protected. See the [source contract and limits](docs/verified-executable-dependencies.md).
+
 The plugin is a bounded advisory layer, not a shell or SQL interpreter. It
 recognizes common command patterns, but cannot resolve every alias, variable,
 generated program, or dialect. Absence of a detected pattern does not itself

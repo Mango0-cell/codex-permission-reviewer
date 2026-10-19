@@ -31,6 +31,8 @@ export interface Review {
 }
 export interface ReviewResult extends Review {
   actionSha256: string | null;
+  decisionSha256?: string;
+  dependencyPolicySha256?: string;
   reviewedAt: string;
   expiresAt: string;
   reviewStatus?: 'unavailable';

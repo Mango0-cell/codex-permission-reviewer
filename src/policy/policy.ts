@@ -8,6 +8,9 @@ import { basename, delimiter, extname, isAbsolute, relative, resolve, sep } from
 import { TRUSTED_ROOTS_ENV, MAX_WORKSPACE_ROOT_LENGTH, MAX_WORKSPACE_ROOTS, MAX_SAFE_READ_TARGETS, MAX_SAFE_READ_SAMPLE_BYTES } from '../config.ts';
 import { isCanonicalAction, normalizeActionForReview } from '../action/metadata.ts';
 import { sanitizeReviewOutput } from '../action/review-result.ts';
+import type { ExecutableDependencyProof } from './executable-dependencies.ts';
+import { isExecutableDependencyProofForAction, isVerifiedExecutableDependencyPath } from './executable-dependencies.ts';
+import { sensitiveFileTarget } from './sensitive-paths.ts';
 
 const SAFE_READ_EXTENSIONS = new Set([
   ".adoc",
@@ -50,52 +53,6 @@ const SAFE_READ_BASENAMES = new Set([
   "security",
 ]);
 
-const SENSITIVE_PATH_COMPONENTS = new Set([
-  ".aws",
-  ".azure",
-  ".buildkite",
-  ".circleci",
-  ".codex",
-  ".config",
-  ".docker",
-  ".git",
-  ".github",
-  ".gitlab",
-  ".gnupg",
-  ".idea",
-  ".kube",
-  ".netrc",
-  ".npm",
-  ".npmrc",
-  ".ssh",
-  ".terraform",
-  ".venv",
-  ".vscode",
-  "appdata",
-  "browser",
-  "browsers",
-  "cloud",
-  "config",
-  "credential",
-  "credentials",
-  "gcloud",
-  "keychain",
-  "keychains",
-  "kube",
-  "kubernetes",
-  "library",
-  "node_modules",
-  "passwords",
-  "profile",
-  "profiles",
-  "secrets",
-  "session",
-  "tokens",
-  "vendor",
-  "venv",
-  "workflows",
-]);
-
 const AMBIGUITY_SIGNAL = /\b(?:ambiguous|guess|maybe|possibly|probably|uncertain|unclear|unknown|unsure|might|could\s+be|not\s+sure|best\s+effort)\b/iu;
 const MUTATION_SIGNAL = /\b(?:alter|apply|chmod|chown|commit|create|delete|deploy|drop|edit|execute|force\s+push|install|kill|modify|move|mutate|mutation|patch|post|put|remove|rename|restart|run|send|truncate|uninstall|update|write|writes)\b/iu;
 const HIGH_SENSITIVITY_SIGNAL = /\b(?:prod(?:uction)?|staging|external|network|internet|download|upload|curl|wget|ssh|scp|secret|secrets|credential|credentials|password|passwd|token|api[\s_-]*key|private[\s_-]*key|auth(?:entication|orization)?|permission|permissions|privilege|sudo|root|admin|acl|grant|revoke|deploy|deployment|release|database|db|schema|data[\s_-]*repair|repair|migration|drop|truncate|delete|destroy|force\s+push|history\s+rewrite|execute|execution|spawn|shell|install|uninstall|send|post|put|patch|webhook|mutation|write|writes|modify|create|remove|rename|restart|kill)\b/iu;
@@ -113,14 +70,6 @@ function broadFileTarget(target: string, cwd: string) {
     return true;
   }
   return false;
-}
-
-function sensitiveFileTarget(target: string) {
-  const components = target.split(/[\\/]+/u).filter(Boolean).map((component) => component.toLocaleLowerCase());
-  const base = components.at(-1) ?? "";
-  if (components.some((component) => component.startsWith(".env") || SENSITIVE_PATH_COMPONENTS.has(component))) return true;
-  if (components.some((component) => /(?:config|settings|secret|credential|password|token|api[_-]?key|private[_-]?key|keychain|auth|profile|browser|cloud|kube)/iu.test(component))) return true;
-  return /(?:\.pem|\.key|\.p12|\.pfx|\.kdbx|\.mobileprovision|\.netrc|\.npmrc|\.gpg|\.age|\.sqlite|\.db)$/iu.test(base);
 }
 
 function safeReadExtension(target: string) {
@@ -365,7 +314,7 @@ const NEVER_LEARN_OPERATION_KINDS = new Set([
   "other",
 ]);
 
-export function explicitAuthorizationBlockers(action: NormalizedAction) {
+export function explicitAuthorizationBlockers(action: NormalizedAction, dependencyProof?: ExecutableDependencyProof) {
   const blockers = [];
   if (action.userAuthorization !== "explicit") blockers.push("the user did not explicitly authorize this exact action");
   if (action.command && hasNonOverridableCommandSignal(action.command)) {
@@ -376,7 +325,8 @@ export function explicitAuthorizationBlockers(action: NormalizedAction) {
   if (textSignals(action).ambiguity) blockers.push("metadata contains uncertainty or ambiguity");
   for (const target of action.fileTargets ?? []) {
     if (broadFileTarget(target, action.cwd)) blockers.push("a file target is broad or ambiguous");
-    if (sensitiveFileTarget(target)) blockers.push("a file target may contain credentials or secrets");
+    const exactVerifiedDependency = isVerifiedExecutableDependencyPath(dependencyProof, action, target);
+    if (sensitiveFileTarget(target, exactVerifiedDependency)) blockers.push("a file target may contain credentials or secrets");
   }
   return [...new Set(blockers)];
 }
@@ -392,11 +342,12 @@ export function learnedApprovalBlockers(action: NormalizedAction) {
   return [...new Set(blockers)];
 }
 
-export async function applyDeterministicPolicy(review: Review, action: NormalizedAction): Promise<Review> {
+export async function applyDeterministicPolicy(review: Review, action: NormalizedAction, dependencyProof?: ExecutableDependencyProof): Promise<Review> {
   const safeReview = sanitizeReviewOutput(review);
   if (safeReview.verdict !== "allow") return safeReview;
+  const verifiedDependencyProof = isExecutableDependencyProofForAction(dependencyProof, action) ? dependencyProof : undefined;
   if (action.userAuthorization === "explicit") {
-    const blockers = explicitAuthorizationBlockers(action);
+    const blockers = explicitAuthorizationBlockers(action, verifiedDependencyProof);
     if (blockers.length === 0) {
       return {
         verdict: "allow",
